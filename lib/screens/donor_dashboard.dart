@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'donate_clothes_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'login_screen.dart';
 
 class DonorDashboard extends StatelessWidget {
   const DonorDashboard({super.key});
@@ -28,28 +30,53 @@ class DonorDashboard extends StatelessWidget {
                 ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Hello, Donor 👋",
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold)),
-                      SizedBox(height: 5),
-                      Text("Ready to make an impact today?",
-                          style: TextStyle(color: Colors.white70)),
-                    ],
-                  ),
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, color: Colors.green),
-                  )
-                ],
-              ),
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Hello, Donor 👋",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: 5),
+        Text(
+          "Ready to make an impact today?",
+          style: TextStyle(color: Colors.white70),
+        ),
+      ],
+    ),
+
+    Row(
+      children: [
+        const CircleAvatar(
+          radius: 25,
+          backgroundColor: Colors.white,
+          child: Icon(Icons.person, color: Colors.green),
+        ),
+        const SizedBox(width: 10),
+
+        // 🔴 LOGOUT BUTTON
+        IconButton(
+          icon: const Icon(Icons.logout, color: Colors.white),
+          onPressed: () async {
+            await FirebaseAuth.instance.signOut();
+
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          },
+        ),
+      ],
+    ),
+  ],
+),
             ),
 
             const SizedBox(height: 20),
