@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,21 +19,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> registerUser() async {
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Registration Successful")),
-      );
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(credential.user!.uid)
+          .set({
+            'name': nameController.text.trim(),
+            'email': emailController.text.trim(),
+            'role': selectedRole,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Registration Successful")));
 
       Navigator.pop(context);
-
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -53,20 +64,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
               padding: const EdgeInsets.all(20),
               child: Card(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 elevation: 10,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.person_add,
-                          size: 60, color: Colors.green),
+                      const Icon(
+                        Icons.person_add,
+                        size: 60,
+                        color: Colors.green,
+                      ),
                       const SizedBox(height: 10),
                       const Text(
                         "Create Account",
                         style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 20),
 
@@ -76,7 +93,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           labelText: "Full Name",
                           prefixIcon: const Icon(Icons.person),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -87,7 +105,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           labelText: "Email",
                           prefixIcon: const Icon(Icons.email),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -99,9 +118,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           labelText: "Password",
                           prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
-                            icon: Icon(obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off),
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
                             onPressed: () {
                               setState(() {
                                 obscurePassword = !obscurePassword;
@@ -109,7 +130,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             },
                           ),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -117,9 +139,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       DropdownButtonFormField(
                         value: selectedRole,
                         items: const [
-                          DropdownMenuItem(value: "Donor", child: Text("Donor")),
+                          DropdownMenuItem(
+                            value: "Donor",
+                            child: Text("Donor"),
+                          ),
                           DropdownMenuItem(value: "NGO", child: Text("NGO")),
-                          DropdownMenuItem(value: "Volunteer", child: Text("Volunteer")),
+                          DropdownMenuItem(
+                            value: "Volunteer",
+                            child: Text("Volunteer"),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() {
@@ -129,7 +157,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: "Select Role",
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
 
@@ -145,9 +174,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             backgroundColor: Colors.green.shade700,
                           ),
-                          onPressed: registerUser,   // ✅ CONNECTED
-                          child: const Text("Register",
-                              style: TextStyle(fontSize: 16)),
+                          onPressed: registerUser, // ✅ CONNECTED
+                          child: const Text(
+                            "Register",
+                            style: TextStyle(fontSize: 16),
+                          ),
                         ),
                       ),
                     ],

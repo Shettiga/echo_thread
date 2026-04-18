@@ -30,10 +30,19 @@ class _LoginScreenState extends State<LoginScreen> {
       String uid = userCred.user!.uid;
 
       // 🔥 Fetch role from Firestore
-      var userData =
+      final userData =
           await FirebaseFirestore.instance.collection("users").doc(uid).get();
 
-      String role = userData['role'];
+      if (!userData.exists) {
+        throw Exception('User profile not found. Please register again.');
+      }
+
+      final data = userData.data();
+      final role = data?['role'] as String?;
+
+      if (role == null || role.isEmpty) {
+        throw Exception('User role is missing. Please register again.');
+      }
 
       if (!mounted) return;
 
