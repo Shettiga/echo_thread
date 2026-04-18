@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'donate_clothes_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart';
 
 class DonorDashboard extends StatelessWidget {
   const DonorDashboard({super.key});
@@ -147,8 +148,8 @@ class DonorDashboard extends StatelessWidget {
                       context,
                       Icons.person,
                       "Profile",
-                      const PlaceholderScreen(title: "Profile"),
-                    ),
+                      const ProfileScreen(),      
+                    ),  
                   ],
                 ),
               ),
