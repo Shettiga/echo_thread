@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart';
 import 'donor_dashboard.dart';
+import 'ngo_dashboard.dart';
+import 'volunteer_dashboard.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,20 +21,44 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> loginUser() async {
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+      UserCredential userCred = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DonorDashboard()),
-      );
+      String uid = userCred.user!.uid;
 
+      // 🔥 Fetch role from Firestore
+      var userData =
+          await FirebaseFirestore.instance.collection("users").doc(uid).get();
+
+      String role = userData['role'];
+
+      if (!mounted) return;
+
+      // 🔀 Navigate based on role
+      if (role == "Donor") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DonorDashboard()),
+        );
+      } else if (role == "NGO") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const NGODashboard()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const VolunteerDashboard()),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -50,16 +77,16 @@ class _LoginScreenState extends State<LoginScreen> {
               padding: const EdgeInsets.all(20),
               child: Card(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 elevation: 10,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
                       TextField(
-                        controller: emailController,   // ✅ ADDED
+                        controller: emailController, // ✅ ADDED
                         decoration: InputDecoration(
                           labelText: "Email",
                           prefixIcon: const Icon(Icons.email),
@@ -78,9 +105,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           labelText: "Password",
                           prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
-                            icon: Icon(obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off),
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
                             onPressed: () {
                               setState(() {
                                 obscurePassword = !obscurePassword;
@@ -98,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: loginUser,   // ✅ CONNECTED
+                          onPressed: loginUser, // ✅ CONNECTED
                           child: const Text("Login"),
                         ),
                       ),
@@ -114,19 +143,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) =>
-                                        const RegisterScreen()),
+                                  builder: (context) => const RegisterScreen(),
+                                ),
                               );
                             },
                             child: const Text(
                               "Register",
                               style: TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold),
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          )
+                          ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
