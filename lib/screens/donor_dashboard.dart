@@ -1,11 +1,52 @@
 import 'package:flutter/material.dart';
 import 'donate_clothes_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 
-class DonorDashboard extends StatelessWidget {
+class DonorDashboard extends StatefulWidget {
   const DonorDashboard({super.key});
+
+  @override
+  State<DonorDashboard> createState() => _DonorDashboardState();
+}
+
+class _DonorDashboardState extends State<DonorDashboard> {
+  String userName = "Loading...";
+
+  @override
+  void initState() {
+    super.initState();
+    getUserName();
+  }
+
+  // 🔥 Fetch user name from Firebase
+  Future<void> getUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      var data = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get();
+
+      setState(() {
+        userName = data.data()?['name'] ?? "User";
+      });
+    }
+  }
+
+  // 🔴 Logout Function
+  void logout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +57,7 @@ class DonorDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // 🔹 Header Section
+            // 🔹 HEADER
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
@@ -31,58 +72,47 @@ class DonorDashboard extends StatelessWidget {
                 ),
               ),
               child: Row(
-  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  children: [
-    const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Hello, Donor 👋",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: 5),
-        Text(
-          "Ready to make an impact today?",
-          style: TextStyle(color: Colors.white70),
-        ),
-      ],
-    ),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  
+                  // 👤 USER INFO
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Hello, $userName 👋",
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 5),
+                      const Text("Ready to make an impact today?",
+                          style: TextStyle(color: Colors.white70)),
+                    ],
+                  ),
 
-    Row(
-      children: [
-        const CircleAvatar(
-          radius: 25,
-          backgroundColor: Colors.white,
-          child: Icon(Icons.person, color: Colors.green),
-        ),
-        const SizedBox(width: 10),
+                  // 🔴 PROFILE + LOGOUT
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.white,
+                        child: Icon(Icons.person, color: Colors.green),
+                      ),
+                      const SizedBox(width: 10),
 
-        // 🔴 LOGOUT BUTTON
-        IconButton(
-          icon: const Icon(Icons.logout, color: Colors.white),
-          onPressed: () async {
-            await FirebaseAuth.instance.signOut();
-
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-              (route) => false,
-            );
-          },
-        ),
-      ],
-    ),
-  ],
-),
+                      IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.white),
+                        onPressed: () => logout(context),
+                      ),
+                    ],
+                  )
+                ],
+              ),
             ),
 
             const SizedBox(height: 20),
 
-            // 🌍 Impact Summary Card
+            // 🌍 IMPACT CARD
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
@@ -94,9 +124,9 @@ class DonorDashboard extends StatelessWidget {
                     BoxShadow(color: Colors.black12, blurRadius: 6)
                   ],
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: const [
+                  children: [
                     ImpactItem(title: "Clothes Donated", value: "12"),
                     ImpactItem(title: "People Helped", value: "8"),
                     ImpactItem(title: "CO₂ Saved", value: "5kg"),
@@ -107,7 +137,7 @@ class DonorDashboard extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            // 🔸 Section Title
+            // 🔸 TITLE
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text("Quick Actions",
@@ -117,7 +147,7 @@ class DonorDashboard extends StatelessWidget {
 
             const SizedBox(height: 15),
 
-            // 🔹 Grid Actions
+            // 🔹 GRID
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -148,8 +178,8 @@ class DonorDashboard extends StatelessWidget {
                       context,
                       Icons.person,
                       "Profile",
-                      const ProfileScreen(),      
-                    ),  
+                      const ProfileScreen(),
+                    ),
                   ],
                 ),
               ),
@@ -160,22 +190,20 @@ class DonorDashboard extends StatelessWidget {
     );
   }
 
-  // 🔹 Reusable Dashboard Card with Navigation
+  // 🔹 CARD FUNCTION
   Widget dashboardCard(
       BuildContext context, IconData icon, String title, Widget screen) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => screen),
+          MaterialPageRoute(builder: (_) => screen),
         );
       },
       child: Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFFA5D6A7), Color(0xFF66BB6A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
         ),
@@ -195,7 +223,7 @@ class DonorDashboard extends StatelessWidget {
   }
 }
 
-// 🌍 Impact Item Widget
+// 🌍 IMPACT ITEM
 class ImpactItem extends StatelessWidget {
   final String title;
   final String value;
@@ -220,7 +248,7 @@ class ImpactItem extends StatelessWidget {
   }
 }
 
-// 📌 Placeholder Screen for Upcoming Features
+// 📌 PLACEHOLDER
 class PlaceholderScreen extends StatelessWidget {
   final String title;
 
@@ -232,7 +260,7 @@ class PlaceholderScreen extends StatelessWidget {
       appBar: AppBar(title: Text(title)),
       body: Center(
         child: Text(
-          "$title Screen Coming Soon 🚀",
+          "$title Coming Soon 🚀",
           style: const TextStyle(fontSize: 18),
         ),
       ),
