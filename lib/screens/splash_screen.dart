@@ -25,27 +25,55 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green.shade700,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.recycling, size: 80, color: Colors.white),
-            SizedBox(height: 20),
-            Text(
-              "Eccho_Thread",
-              style: TextStyle(
-                fontSize: 28,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+
+      // ✅ REMOVE THIS
+      // backgroundColor: Colors.green.shade700,
+
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1B5E20), Color(0xFF81C784)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+
+              // ✅ LOGO
+              Image.asset(
+                'assets/images/logo.png',
+                height: 140,
               ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              "Wear Sustainability. Share Humanity.",
-              style: TextStyle(color: Colors.white70),
-            ),
-          ],
+
+              const SizedBox(height: 20),
+
+              // ✅ APP NAME
+              const Text(
+                "EchoThread",
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // ✅ TAGLINE
+              const Text(
+                "Reuse • Donate • Empower",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
