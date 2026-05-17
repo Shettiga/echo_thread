@@ -2,58 +2,81 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+import 'register_screen.dart';
+import 'donor_dashboard.dart';
+import 'ngo_dashboard.dart';
+import 'volunteer_dashboard.dart';
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
-  String selectedRole = "Donor";
+class _LoginScreenState extends State<LoginScreen> {
   bool obscurePassword = true;
 
-  final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  // 🔐 REGISTER FUNCTION
-  Future<void> registerUser() async {
+  // 🔐 LOGIN FUNCTION
+  Future<void> loginUser() async {
     try {
-      // ✅ CREATE USER
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
+      UserCredential userCred = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      // ✅ STORE USER DATA IN FIRESTORE
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(credential.user!.uid)
-          .set({
-        'name': nameController.text.trim(),
-        'email': emailController.text.trim(),
-        'role': selectedRole,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      String uid = userCred.user!.uid;
+
+      // 🔥 FETCH USER ROLE
+      final userData = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(uid)
+          .get();
+
+      if (!userData.exists) {
+        throw Exception("User profile not found.");
+      }
+
+      final data = userData.data();
+      final role = data?['role'];
 
       if (!mounted) return;
 
       // ✅ SUCCESS MESSAGE
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Registration Successful 🎉"),
+          content: Text("Login Successful 🎉"),
           backgroundColor: Colors.green,
         ),
       );
 
-      // ⏳ SMALL DELAY
-      await Future.delayed(const Duration(seconds: 1));
-
-      // 🔙 BACK TO LOGIN
-      Navigator.pop(context);
-
+      // 🔀 ROLE BASED NAVIGATION
+      if (role == "Donor") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const DonorDashboard(),
+          ),
+        );
+      } else if (role == "NGO") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const NGODashboard(),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const VolunteerDashboard(),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -70,16 +93,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-
-        // 🌈 BACKGROUND GRADIENT
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFF1B5E20),
-              Color(0xFF81C784),
+              Color(0xFF2E7D32),
+              Color(0xFF66BB6A),
             ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
 
@@ -90,7 +111,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               child: Card(
                 elevation: 10,
-
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -112,7 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       // ✅ TITLE
                       const Text(
-                        "Create Account",
+                        "Welcome Back!",
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -123,7 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 5),
 
                       const Text(
-                        "Join EchoThread today",
+                        "Login to continue",
                         style: TextStyle(
                           color: Colors.grey,
                         ),
@@ -131,26 +151,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: 25),
 
-                      // 👤 FULL NAME
-                      TextField(
-                        controller: nameController,
-
-                        decoration: InputDecoration(
-                          labelText: "Full Name",
-                          prefixIcon: const Icon(Icons.person),
-
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 15),
-
                       // 📧 EMAIL
                       TextField(
                         controller: emailController,
-
                         decoration: InputDecoration(
                           labelText: "Email",
                           prefixIcon: const Icon(Icons.email),
@@ -192,52 +195,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 10),
 
-                      // 🎯 ROLE DROPDOWN
-                      DropdownButtonFormField(
-                        value: selectedRole,
-
-                        items: const [
-                          DropdownMenuItem(
-                            value: "Donor",
-                            child: Text("Donor"),
-                          ),
-
-                          DropdownMenuItem(
-                            value: "NGO",
-                            child: Text("NGO"),
-                          ),
-
-                          DropdownMenuItem(
-                            value: "Volunteer",
-                            child: Text("Volunteer"),
-                          ),
-                        ],
-
-                        onChanged: (value) {
-                          setState(() {
-                            selectedRole = value.toString();
-                          });
-                        },
-
-                        decoration: InputDecoration(
-                          labelText: "Select Role",
-
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                      // 🔹 FORGOT PASSWORD
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {},
+                          child: const Text("Forgot Password?"),
                         ),
                       ),
 
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 10),
 
-                      // 🚀 REGISTER BUTTON
+                      // 🚀 LOGIN BUTTON
                       SizedBox(
                         width: double.infinity,
 
                         child: ElevatedButton(
-                          onPressed: registerUser,
+                          onPressed: loginUser,
 
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
@@ -252,10 +228,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
 
                           child: const Text(
-                            "Register",
+                            "Login",
                             style: TextStyle(fontSize: 16),
                           ),
                         ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // 🔹 REGISTER OPTION
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+
+                          const Text(
+                            "New to EchoThread? ",
+                          ),
+
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const RegisterScreen(),
+                                ),
+                              );
+                            },
+
+                            child: const Text(
+                              "Register",
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
