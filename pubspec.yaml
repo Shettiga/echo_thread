@@ -48,6 +48,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
+  flutter_launcher_icons: ^0.13.1
   flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
@@ -62,6 +63,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/logo.png
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
 
   # To add assets to your application, add an assets section, like this:
   # assets:
