@@ -43,6 +43,10 @@ class _LoginScreenState extends State<LoginScreen>
 
   // 🔐 LOGIN FUNCTION
   Future<void> loginUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       UserCredential userCred = await FirebaseAuth.instance
           .signInWithEmailAndPassword(
@@ -100,13 +104,20 @@ class _LoginScreenState extends State<LoginScreen>
       }
     } catch (e) {
       if (!mounted) return;
-
+      // show error and shake the card to give feedback
+      _shakeController.forward(from: 0.0);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error: $e"),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -284,137 +295,213 @@ class _LoginScreenState extends State<LoginScreen>
                   opacity: _cardFadeAnimation,
                   child: ScaleTransition(
                     scale: _cardScaleAnimation,
-                    child: Card(
-                      elevation: 10,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(25),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            RotationTransition(
-                              turns: _logoRotateAnimation,
-                              child: ScaleTransition(
-                                scale: _logoScaleAnimation,
-                                child: Image.asset(
-                                  'assets/images/logo.png',
-                                  height: 90,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 15),
-                            const Text(
-                              "Welcome Back!",
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            const Text(
-                              "Login to continue",
-                              style: TextStyle(
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 25),
-                            FadeTransition(
-                              opacity: _fieldsFadeAnimation,
+                    child: AnimatedBuilder(
+                      animation: _shakeController,
+                      builder: (context, child) {
+                        final offsetX = math.sin(_shakeController.value * math.pi * 4) * 8.0 * (1 - _shakeController.value);
+                        return Transform.translate(
+                          offset: Offset(offsetX, 0),
+                          child: child,
+                        );
+                      },
+                      child: Card(
+                        elevation: 10,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              color: Colors.white.withOpacity(0.06),
+                              padding: const EdgeInsets.all(24),
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  TextField(
-                                    controller: emailController,
-                                    decoration: InputDecoration(
-                                      labelText: "Email",
-                                      prefixIcon: const Icon(Icons.email),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                  RotationTransition(
+                                    turns: _logoRotateAnimation,
+                                    child: ScaleTransition(
+                                      scale: _logoScaleAnimation,
+                                      child: Image.asset(
+                                        'assets/images/logo.png',
+                                        height: 90,
                                       ),
                                     ),
                                   ),
                                   const SizedBox(height: 15),
-                                  TextField(
-                                    controller: passwordController,
-                                    obscureText: obscurePassword,
-                                    decoration: InputDecoration(
-                                      labelText: "Password",
-                                      prefixIcon: const Icon(Icons.lock),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(
-                                          obscurePassword
-                                              ? Icons.visibility
-                                              : Icons.visibility_off,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            obscurePassword = !obscurePassword;
-                                          });
-                                        },
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                  const Text(
+                                    "Welcome Back!",
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
                                     ),
                                   ),
-                                  const SizedBox(height: 10),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: () {},
-                                      child: const Text("Forgot Password?"),
+                                  const SizedBox(height: 5),
+                                  const Text(
+                                    "Login to continue",
+                                    style: TextStyle(
+                                      color: Colors.grey,
                                     ),
                                   ),
-                                  const SizedBox(height: 10),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: loginUser,
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        backgroundColor: Colors.green.shade700,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        "Login",
-                                        style: TextStyle(fontSize: 16),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text("New to EchoThread? "),
-                                      GestureDetector(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => const RegisterScreen(),
+                                  const SizedBox(height: 25),
+                                  FadeTransition(
+                                    opacity: _fieldsFadeAnimation,
+                                    child: Column(
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 220),
+                                          curve: Curves.easeOut,
+                                          transform: Matrix4.translationValues(0, _emailFocused ? -4 : 0, 0),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            boxShadow: [
+                                              if (_emailFocused)
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.12),
+                                                  blurRadius: 18,
+                                                  offset: const Offset(0, 10),
+                                                ),
+                                            ],
+                                          ),
+                                          child: TextField(
+                                            focusNode: _emailFocus,
+                                            controller: emailController,
+                                            decoration: InputDecoration(
+                                              labelText: "Email",
+                                              prefixIcon: const Icon(Icons.email),
+                                              filled: true,
+                                              fillColor: Colors.white.withOpacity(0.02),
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                borderSide: BorderSide.none,
+                                              ),
                                             ),
-                                          );
-                                        },
-                                        child: const Text(
-                                          "Register",
-                                          style: TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 15),
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 220),
+                                          curve: Curves.easeOut,
+                                          transform: Matrix4.translationValues(0, _passwordFocused ? -4 : 0, 0),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            boxShadow: [
+                                              if (_passwordFocused)
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.12),
+                                                  blurRadius: 18,
+                                                  offset: const Offset(0, 10),
+                                                ),
+                                            ],
+                                          ),
+                                          child: TextField(
+                                            focusNode: _passwordFocus,
+                                            controller: passwordController,
+                                            obscureText: obscurePassword,
+                                            decoration: InputDecoration(
+                                              labelText: "Password",
+                                              prefixIcon: const Icon(Icons.lock),
+                                              filled: true,
+                                              fillColor: Colors.white.withOpacity(0.02),
+                                              suffixIcon: IconButton(
+                                                icon: Icon(obscurePassword ? Icons.visibility : Icons.visibility_off),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    obscurePassword = !obscurePassword;
+                                                  });
+                                                },
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                borderSide: BorderSide.none,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: TextButton(
+                                            onPressed: () {},
+                                            child: const Text("Forgot Password?"),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: GestureDetector(
+                                            onTap: _isLoading ? null : () => loginUser(),
+                                            child: AnimatedContainer(
+                                              duration: const Duration(milliseconds: 300),
+                                              height: 52,
+                                              decoration: BoxDecoration(
+                                                gradient: _isLoading
+                                                    ? LinearGradient(colors: [Colors.green.shade700.withOpacity(0.85), Colors.green.shade500.withOpacity(0.85)])
+                                                    : const LinearGradient(colors: [Color(0xFF1B5E20), Color(0xFF66BB6A)]),
+                                                borderRadius: BorderRadius.circular(12),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withOpacity(0.18),
+                                                    blurRadius: 12,
+                                                    offset: const Offset(0, 6),
+                                                  )
+                                                ],
+                                              ),
+                                              child: Center(
+                                                child: AnimatedSwitcher(
+                                                  duration: const Duration(milliseconds: 250),
+                                                  child: _isLoading
+                                                      ? const SizedBox(
+                                                          height: 20,
+                                                          width: 20,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2.4,
+                                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                          ),
+                                                        )
+                                                      : const Text(
+                                                          "Login",
+                                                          key: ValueKey('login_text'),
+                                                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                                                        ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Text("New to EchoThread? "),
+                                            GestureDetector(
+                                              onTap: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => const RegisterScreen(),
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text(
+                                                "Register",
+                                                style: TextStyle(
+                                                  color: Colors.green,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
