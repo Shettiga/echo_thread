@@ -18,6 +18,7 @@ class EcchoThreadApp extends StatelessWidget {
       title: 'Eccho Thread',
       theme: ThemeData(
         primarySwatch: Colors.green,
+        scaffoldBackgroundColor: const Color(0xFF0F3D2E),
       ),
       home: const SplashScreen(),   // ✅ KEEP YOUR EXISTING FLOW
     );
