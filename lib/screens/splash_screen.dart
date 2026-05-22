@@ -11,42 +11,93 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
+  late final AnimationController _controller;
+  late final Animation<double> _backgroundGlowAnimation;
+  late final Animation<double> _cardFadeAnimation;
+  late final Animation<double> _cardScaleAnimation;
+  late final Animation<double> _logoScaleAnimation;
+  late final Animation<double> _logoRotateAnimation;
+  late final Animation<Offset> _titleSlideAnimation;
+  late final Animation<double> _titleFadeAnimation;
+  late final Animation<double> _subtitleFadeAnimation;
+  late final Animation<double> _progressFadeAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // 🔥 Animation Controller
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 2600),
+    )..forward();
+
+    _backgroundGlowAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
     );
 
-    // 🔥 Scale Animation
-    _scaleAnimation = Tween<double>(
-      begin: 0.7,
+    _cardFadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+    );
+
+    _cardScaleAnimation = Tween<double>(
+      begin: 0.82,
       end: 1.0,
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: Curves.elasticOut,
+        curve: const Interval(0.0, 0.75, curve: Curves.elasticOut),
       ),
     );
 
-    // 🔥 Fade Animation
-    _fadeAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(_controller);
+    _logoScaleAnimation = Tween<double>(
+      begin: 0.55,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.15, 0.8, curve: Curves.easeOutBack),
+      ),
+    );
 
-    _controller.forward();
+    _logoRotateAnimation = Tween<double>(
+      begin: -0.08,
+      end: 0.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.12, 0.85, curve: Curves.easeOutCubic),
+      ),
+    );
 
-    // ⏳ Navigate to Login
+    _titleSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.38, 0.82, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _titleFadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.35, 0.8, curve: Curves.easeOut),
+    );
+
+    _subtitleFadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.52, 0.88, curve: Curves.easeOut),
+    );
+
+    _progressFadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.68, 1.0, curve: Curves.easeOut),
+    );
+
     Timer(const Duration(seconds: 4), () {
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -62,89 +113,231 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  Widget _buildGlow({
+    required Alignment alignment,
+    required double size,
+    required Color color,
+  }) {
+    return Align(
+      alignment: alignment,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(
+            alpha: 0.18 + (0.12 * _backgroundGlowAnimation.value),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       body: Container(
         width: double.infinity,
-
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
+              Color(0xFF0F3D2E),
               Color(0xFF1B5E20),
               Color(0xFF43A047),
-              Color(0xFF81C784),
+              Color(0xFF93D18B),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
-
-        child: Center(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-
-                  // ✅ LOGO
-                  Container(
-                    padding: const EdgeInsets.all(20),
-
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 120,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _SplashTexturePainter(
+                      progress: _controller.value,
                     ),
                   ),
-
-                  const SizedBox(height: 30),
-
-                  // ✅ APP NAME
-                  const Text(
-                    "EchoThread",
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.5,
+                ),
+                _buildGlow(
+                  alignment: const Alignment(-1.05, -0.95),
+                  size: 220 + (_backgroundGlowAnimation.value * 40),
+                  color: const Color(0xFFB9F6CA),
+                ),
+                _buildGlow(
+                  alignment: const Alignment(1.1, -0.1),
+                  size: 180 + (_backgroundGlowAnimation.value * 30),
+                  color: const Color(0xFFE8F5E9),
+                ),
+                _buildGlow(
+                  alignment: const Alignment(0.8, 1.0),
+                  size: 260 + (_backgroundGlowAnimation.value * 50),
+                  color: const Color(0xFF66BB6A),
+                ),
+                Center(
+                  child: FadeTransition(
+                    opacity: _cardFadeAnimation,
+                    child: ScaleTransition(
+                      scale: _cardScaleAnimation,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 26,
+                          vertical: 28,
+                        ),
+                        constraints: const BoxConstraints(maxWidth: 320),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            width: 1.4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.18),
+                              blurRadius: 28,
+                              offset: const Offset(0, 16),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            RotationTransition(
+                              turns: _logoRotateAnimation,
+                              child: ScaleTransition(
+                                scale: _logoScaleAnimation,
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.32),
+                                        Colors.white.withValues(alpha: 0.12),
+                                      ],
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.white.withValues(alpha: 0.15),
+                                        blurRadius: 24,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Image.asset(
+                                    'assets/images/logo.png',
+                                    height: 112,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            SlideTransition(
+                              position: _titleSlideAnimation,
+                              child: FadeTransition(
+                                opacity: _titleFadeAnimation,
+                                child: const Text(
+                                  'EchoThread',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: 1.3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            FadeTransition(
+                              opacity: _subtitleFadeAnimation,
+                              child: const Text(
+                                'Reuse • Donate • Empower',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  height: 1.4,
+                                  color: Colors.white70,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+                            FadeTransition(
+                              opacity: _progressFadeAnimation,
+                              child: Column(
+                                children: [
+                                  const SizedBox(
+                                    width: 168,
+                                    child: LinearProgressIndicator(
+                                      minHeight: 4,
+                                      backgroundColor: Color(0x33FFFFFF),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    'Loading your impact story...',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white.withValues(alpha: 0.82),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-
-                  const SizedBox(height: 10),
-
-                  // ✅ TAGLINE
-                  const Text(
-                    "Reuse • Donate • Empower",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                      letterSpacing: 1,
-                    ),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // ✅ LOADING INDICATOR
-                  const CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 3,
-                  ),
-                ],
-              ),
-            ),
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
+  }
+}
+
+class _SplashTexturePainter extends CustomPainter {
+  _SplashTexturePainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.035)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    final verticalOffset = size.height * 0.12 * progress;
+
+    for (var index = 0; index < 7; index++) {
+      final dx = (size.width / 7) * index;
+      final path = Path()
+        ..moveTo(dx, size.height)
+        ..quadraticBezierTo(
+          dx + size.width * 0.08,
+          size.height * 0.72 - verticalOffset,
+          dx + size.width * 0.18,
+          size.height * 0.48 - (verticalOffset * 0.45),
+        );
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SplashTexturePainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
