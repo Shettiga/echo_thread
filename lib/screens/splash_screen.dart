@@ -283,7 +283,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                   const SizedBox(height: 14),
                                   Text(
-                                    'Loading your impact story...',
+                                    "Your donation starts someone's new story.",
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.white.withValues(alpha: 0.82),
