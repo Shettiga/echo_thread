@@ -351,7 +351,7 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
                                 : "Pickup Date: ${_pickupDate!.year}-${_pickupDate!.month.toString().padLeft(2, '0')}-${_pickupDate!.day.toString().padLeft(2, '0')}",
                             style: TextStyle(
                               fontSize: 16,
-                              color: _pickupDate == null ? Colors.black54 : Colors.black85,
+                              color: _pickupDate == null ? Colors.black54 : Colors.black87,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
