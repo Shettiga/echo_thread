@@ -10,10 +10,13 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  String name = "Loading...";
+  String email = "Loading...";
+  String role = "Loading...";
+  bool _isLoading = true;
 
-  String name = "";
-  String email = "";
-  String role = "";
+  int totalItems = 0;
+  int completedCount = 0;
 
   @override
   void initState() {
@@ -22,38 +25,331 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> fetchUserData() async {
-    String uid = FirebaseAuth.instance.currentUser!.uid;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
 
-    var userData = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
+      final uid = user.uid;
 
-    setState(() {
-      name = userData['name'];
-      email = userData['email'];
-      role = userData['role'];
-    });
+      // 1. User details
+      var userData = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(uid)
+          .get();
+
+      if (!userData.exists) return;
+
+      final uData = userData.data();
+      final userRole = uData?['role'] ?? 'Donor';
+
+      if (mounted) {
+        setState(() {
+          name = uData?['name'] ?? "User";
+          email = uData?['email'] ?? "";
+          role = userRole;
+        });
+      }
+
+      // 2. Dynamic statistics based on role
+      QuerySnapshot donationsSnapshot;
+      if (userRole == 'Donor') {
+        donationsSnapshot = await FirebaseFirestore.instance
+            .collection('donations')
+            .where('donorId', isEqualTo: uid)
+            .get();
+
+        int garments = 0;
+        int completed = 0;
+        for (var doc in donationsSnapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final int qty = int.tryParse(data['quantity']?.toString() ?? '1') ?? 1;
+          garments += qty;
+          if (data['status'] == 'Delivered' || data['status'] == 'Distributed') {
+            completed++;
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            totalItems = garments;
+            completedCount = completed;
+          });
+        }
+      } else if (userRole == 'Volunteer') {
+        donationsSnapshot = await FirebaseFirestore.instance
+            .collection('donations')
+            .where('volunteerId', isEqualTo: uid)
+            .get();
+
+        int deliveries = 0;
+        for (var doc in donationsSnapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data['status'] == 'Delivered' || data['status'] == 'Distributed') {
+            deliveries++;
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            totalItems = donationsSnapshot.docs.length;
+            completedCount = deliveries;
+          });
+        }
+      } else if (userRole == 'NGO') {
+        donationsSnapshot = await FirebaseFirestore.instance.collection('donations').get();
+
+        int active = 0;
+        int distributed = 0;
+        for (var doc in donationsSnapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data['status'] == 'Distributed') {
+            distributed++;
+          } else {
+            active++;
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            totalItems = active;
+            completedCount = distributed;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching profile statistics: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = _getRoleColor(role);
+
     return Scaffold(
-      appBar: AppBar(title: const Text("My Profile")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const CircleAvatar(radius: 40, child: Icon(Icons.person, size: 40)),
-            const SizedBox(height: 20),
-
-            Text("Name: $name", style: const TextStyle(fontSize: 18)),
-            Text("Email: $email"),
-            Text("Role: $role"),
-
-          ],
+      backgroundColor: const Color(0xFFF4F6F8),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        iconTheme: IconThemeData(color: themeColor),
+        title: Text(
+          "My Profile",
+          style: TextStyle(color: themeColor, fontWeight: FontWeight.w800),
         ),
+        centerTitle: true,
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.green))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+
+                  // 👤 AVATAR / PROFILE HERO
+                  Center(
+                    child: Stack(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: themeColor, width: 3),
+                          ),
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundColor: themeColor.withValues(alpha: 0.1),
+                            child: Icon(
+                              _getRoleIcon(role),
+                              size: 50,
+                              color: themeColor,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Colors.black12, blurRadius: 4),
+                              ],
+                            ),
+                            child: Icon(Icons.edit, size: 14, color: themeColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  Text(
+                    name,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: themeColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      role,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themeColor),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // 📦 USER ACCOUNT CARD
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Account Details",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                        ),
+                        const Divider(height: 24),
+                        _buildDetailRow("Email", email, Icons.email_outlined, themeColor),
+                        const SizedBox(height: 14),
+                        _buildDetailRow("Access Level", role, Icons.shield_outlined, themeColor),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 📊 STATISTICS CARD
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Performance Stats",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                        ),
+                        const Divider(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatColumn(_getStatTitle1(role), totalItems.toString(), themeColor),
+                            Container(width: 1, height: 40, color: Colors.grey.shade200),
+                            _buildStatColumn(_getStatTitle2(role), completedCount.toString(), themeColor),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon, Color iconColor) {
+    return Row(
+      children: [
+        Icon(icon, color: iconColor, size: 22),
+        const SizedBox(width: 14),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black45)),
+            const SizedBox(height: 3),
+            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87)),
+          ],
+        )
+      ],
+    );
+  }
+
+  Widget _buildStatColumn(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+
+  Color _getRoleColor(String r) {
+    switch (r) {
+      case 'NGO':
+        return const Color(0xFFE65100);
+      case 'Volunteer':
+        return const Color(0xFF1565C0);
+      default:
+        return const Color(0xFF2E7D32);
+    }
+  }
+
+  IconData _getRoleIcon(String r) {
+    switch (r) {
+      case 'NGO':
+        return Icons.home_work_outlined;
+      case 'Volunteer':
+        return Icons.directions_run_outlined;
+      default:
+        return Icons.volunteer_activism_outlined;
+    }
+  }
+
+  String _getStatTitle1(String r) {
+    switch (r) {
+      case 'NGO':
+        return "Active Requests";
+      case 'Volunteer':
+        return "Assigned Tasks";
+      default:
+        return "Garments Donated";
+    }
+  }
+
+  String _getStatTitle2(String r) {
+    switch (r) {
+      case 'NGO':
+        return "Garments Distributed";
+      case 'Volunteer':
+        return "Garments Delivered";
+      default:
+        return "Completed Goals";
+    }
   }
 }
