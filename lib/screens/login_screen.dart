@@ -497,19 +497,18 @@ class _LoginScreenState extends State<LoginScreen>
                                                 child: ScaleTransition(
                                                   scale: _logoScaleAnimation,
                                                   child: Container(
-                                                    padding: const EdgeInsets.all(16),
-                                                    decoration: BoxDecoration(
+                                                    padding: const EdgeInsets.all(4),
+                                                    decoration: const BoxDecoration(
                                                       shape: BoxShape.circle,
-                                                      gradient: RadialGradient(
-                                                        colors: [
-                                                          Colors.white.withOpacity(0.32),
-                                                          Colors.white.withOpacity(0.08),
-                                                        ],
-                                                      ),
+                                                      color: Colors.white,
                                                     ),
-                                                    child: Image.asset(
-                                                      'assets/images/logo.png',
-                                                      height: 84,
+                                                    child: ClipOval(
+                                                      child: Image.asset(
+                                                        'assets/images/logo.png',
+                                                        height: 84,
+                                                        width: 84,
+                                                        fit: BoxFit.cover,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),

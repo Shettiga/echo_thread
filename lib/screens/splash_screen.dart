@@ -211,26 +211,25 @@ class _SplashScreenState extends State<SplashScreen>
                               child: ScaleTransition(
                                 scale: _logoScaleAnimation,
                                 child: Container(
-                                  padding: const EdgeInsets.all(20),
+                                  padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        Colors.white.withValues(alpha: 0.32),
-                                        Colors.white.withValues(alpha: 0.12),
-                                      ],
-                                    ),
+                                    color: Colors.white,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withValues(alpha: 0.15),
+                                        color: Colors.black.withValues(alpha: 0.15),
                                         blurRadius: 24,
                                         spreadRadius: 2,
                                       ),
                                     ],
                                   ),
-                                  child: Image.asset(
-                                    'assets/images/logo.png',
-                                    height: 112,
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      'assets/images/logo.png',
+                                      height: 112,
+                                      width: 112,
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
                                 ),
                               ),
