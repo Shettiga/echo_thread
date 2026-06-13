@@ -60,7 +60,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
 
   void logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    if (!mounted) return;
+    if (!context.mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -86,10 +86,11 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
       toastMsg = "Garments delivered to the NGO hub! Thank you! 🎉";
     }
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(toastMsg),
-        backgroundColor: Colors.blue.shade850,
+        backgroundColor: Colors.blue.shade900,
       ),
     );
   }
@@ -261,7 +262,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                     if (tasks.isEmpty) {
                       return Center(
                         child: Column(
-                          mainAxisAlignment: Main => mainAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.check_circle_outline, size: 64, color: Colors.grey.shade400),
                             const SizedBox(height: 12),
