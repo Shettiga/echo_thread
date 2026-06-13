@@ -255,12 +255,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
 
+      // Reload profile data after saving to satisfy the dynamic refresh requirement
+      await fetchUserData();
+
       if (mounted) {
         setState(() {
-          name = newName;
-          email = newEmail;
-          phone = newPhone;
-          profileImageUrl = newImageUrl;
           _selectedProfileImage = null;
           _isEditing = false;
         });
@@ -268,11 +267,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Profile updated successfully 🎉'),
+          content: Text('Profile Updated Successfully'),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
+      debugPrint("Error during profile update or image upload: $e");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving changes: $e'),

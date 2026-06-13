@@ -211,6 +211,7 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
 
       Navigator.pop(context);
     } catch (e) {
+      debugPrint("Error during donation submission or image upload: $e");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

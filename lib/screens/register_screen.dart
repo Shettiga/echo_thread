@@ -206,7 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Account Created Successfully 🎉'),
+          content: Text('Registered Successfully 🎉'),
           backgroundColor: Colors.green,
         ),
       );
@@ -215,6 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       await _showSimulatedNotificationDialog(context, regName, regEmail, regPhone);
 
     } on FirebaseAuthException catch (e) {
+      debugPrint("Firebase Auth Exception during registration: Code: ${e.code}, Message: ${e.message}");
       if (!mounted) return;
       String message = 'Registration Failed';
       if (e.code == 'email-already-in-use') message = 'Email already exists';
@@ -224,6 +225,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         SnackBar(content: Text(message)),
       );
     } catch (e) {
+      debugPrint("Unknown exception during registration: $e");
       if (!mounted) return;
       _shakeController.forward(from: 0.0);
       ScaffoldMessenger.of(context).showSnackBar(
