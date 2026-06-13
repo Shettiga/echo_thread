@@ -16,6 +16,9 @@ class DonorDashboard extends StatefulWidget {
 class _DonorDashboardState extends State<DonorDashboard>
     with SingleTickerProviderStateMixin {
   String userName = "Loading...";
+  String userEmail = "";
+  String userRole = "Donor";
+  String? profileImage;
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
 
@@ -49,6 +52,9 @@ class _DonorDashboardState extends State<DonorDashboard>
       if (mounted) {
         setState(() {
           userName = data.data()?['name'] ?? "User";
+          userEmail = data.data()?['email'] ?? user.email ?? "";
+          userRole = data.data()?['role'] ?? "Donor";
+          profileImage = data.data()?['profileImage'];
         });
       }
     }
@@ -92,7 +98,7 @@ class _DonorDashboardState extends State<DonorDashboard>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: themeColor.withValues(alpha: 0.15),
+                      color: themeColor.withOpacity(0.15),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     )
@@ -101,38 +107,74 @@ class _DonorDashboardState extends State<DonorDashboard>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Hello, $userName 👋",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  "Hello, $userName 👋",
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  userRole,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          "Ready to make an impact today?",
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            userEmail,
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            "Ready to make an impact today?",
+                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
                     ),
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const ProfileScreen()),
                             );
+                            getUserName(); // Refresh details when returning from profile
                           },
-                          child: const CircleAvatar(
+                          child: CircleAvatar(
                             radius: 24,
                             backgroundColor: Colors.white,
-                            child: Icon(Icons.person, color: Color(0xFF2E7D32)),
+                            backgroundImage: profileImage != null && profileImage!.isNotEmpty
+                                ? NetworkImage(profileImage!)
+                                : null,
+                            child: profileImage == null || profileImage!.isEmpty
+                                ? const Icon(Icons.person, color: Color(0xFF2E7D32))
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -158,7 +200,7 @@ class _DonorDashboardState extends State<DonorDashboard>
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
+                        color: Colors.black.withOpacity(0.04),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       )
@@ -183,7 +225,7 @@ class _DonorDashboardState extends State<DonorDashboard>
                             peopleHelped += (qty * 0.85).round();
                           }
                         }
-                        co2Saved = totalGarments * 0.55; // 0.55kg of CO2 per garment
+                        co2Saved = totalGarments * 5.5; // 5.5kg of CO2 per garment
                       }
 
                       return Row(
@@ -293,11 +335,12 @@ class _DonorDashboardState extends State<DonorDashboard>
     Color accentColor,
   ) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => screen),
         );
+        getUserName(); // Refresh state upon return
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -306,7 +349,7 @@ class _DonorDashboardState extends State<DonorDashboard>
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withOpacity(0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             )
@@ -395,6 +438,7 @@ class SustainabilityReportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFF2E7D32);
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F5),
@@ -408,65 +452,219 @@ class SustainabilityReportScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Icon(Icons.eco_rounded, size: 80, color: themeColor),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              "Sustainable Fashion Impact",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "Every single item of clothing you donate helps avoid landfill and minimizes the massive carbon footprint of textile manufacturing.",
-              style: TextStyle(fontSize: 15, height: 1.4, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 24),
-            _buildStatMetric("CO₂ Emissions Avoided", "5.5 kg per garment saved from production lines."),
-            _buildStatMetric("Water Conservation", "Over 2,700 liters of water conserved by reuse."),
-            _buildStatMetric("Landfill Reduction", "100% of cotton fabric fibers recycled/reused instead of thrown."),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('donations')
+            .where('donorId', isEqualTo: user?.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Colors.green));
+          }
+
+          int totalDonations = 0;
+          int totalClothes = 0;
+          int pending = 0;
+          int accepted = 0;
+          int assigned = 0;
+          int pickedUp = 0;
+          int delivered = 0;
+          int distributed = 0;
+
+          if (snapshot.hasData) {
+            final docs = snapshot.data!.docs;
+            totalDonations = docs.length;
+            for (var doc in docs) {
+              final d = doc.data() as Map<String, dynamic>;
+              final int qty = int.tryParse(d['quantity']?.toString() ?? '1') ?? 1;
+              totalClothes += qty;
+              final String status = d['status'] ?? 'Pending';
+              if (status == 'Pending') {
+                pending++;
+              } else if (status == 'Accepted' || status == 'Accepted by NGO') {
+                accepted++;
+              } else if (status == 'Assigned' || status == 'Assigned to Volunteer' || status == 'Accepted by Volunteer') {
+                assigned++;
+              } else if (status == 'Picked Up') {
+                pickedUp++;
+              } else if (status == 'Delivered') {
+                delivered++;
+              } else if (status == 'Distributed') {
+                distributed++;
+              }
+            }
+          }
+
+          // Environmental impact metrics (CO2: 5.5kg, Water: 2700L, landfill: 0.3kg per garment)
+          double co2Saved = totalClothes * 5.5;
+          double waterSaved = totalClothes * 2700.0;
+          double landfillSaved = totalClothes * 0.3;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: themeColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.eco_rounded, size: 64, color: themeColor),
+                  ),
                 ),
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Keep Donating!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            )
-          ],
-        ),
+                const SizedBox(height: 20),
+                const Center(
+                  child: Text(
+                    "Your Dynamic Fashion Impact",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Core Stats Cards
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard("Donations Made", totalDonations.toString(), Icons.volunteer_activism, themeColor),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatCard("Clothes Donated", totalClothes.toString(), Icons.checkroom, themeColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Status Summary
+                const Text(
+                  "Donation Status Summary",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildStatusRow("Pending Review", pending, Colors.orange),
+                      _buildStatusRow("Accepted by NGO", accepted, Colors.blue),
+                      _buildStatusRow("Assigned to Volunteer", assigned, Colors.indigo),
+                      _buildStatusRow("In Transit (Picked Up)", pickedUp, Colors.purple),
+                      _buildStatusRow("Delivered to NGO", delivered, Colors.green),
+                      _buildStatusRow("Distributed to Needy", distributed, Colors.teal),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Environmental Impact section
+                const Text(
+                  "Estimated Environmental Impact",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+                const SizedBox(height: 12),
+                _buildImpactMetric("CO₂ Saved", "${co2Saved.toStringAsFixed(1)} kg", "Avoided carbon footprint from new textile production.", themeColor),
+                _buildImpactMetric("Water Saved", "${waterSaved.toStringAsFixed(0)} Liters", "Saved water by reusing textiles instead of manufacturing new ones.", themeColor),
+                _buildImpactMetric("Landfill Prevented", "${landfillSaved.toStringAsFixed(1)} kg", "Amount of waste directly diverted from open landfills.", themeColor),
+
+                const SizedBox(height: 20),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatMetric(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildStatCard(String title, String val, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+        ],
+      ),
+      child: Column(
         children: [
-          const Icon(Icons.check_circle_outline, color: Color(0xFF2E7D32), size: 22),
-          const SizedBox(width: 12),
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(val, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
+          const SizedBox(height: 4),
+          Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusRow(String title, int count, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+              ),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+            ],
+          ),
+          Text(
+            count.toString(),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImpactMetric(String label, String value, String desc, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_outline, color: color, size: 24),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87)),
-                const SizedBox(height: 3),
-                Text(value, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                    Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: color)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(desc, style: const TextStyle(color: Colors.black54, fontSize: 11)),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

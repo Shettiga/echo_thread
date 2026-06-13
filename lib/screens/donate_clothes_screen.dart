@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class DonateClothesScreen extends StatefulWidget {
   const DonateClothesScreen({super.key});
@@ -83,13 +84,46 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
     }
   }
 
-  Future<void> pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+  Future<void> pickImage(ImageSource source) async {
+    final pickedFile = await _picker.pickImage(source: source, imageQuality: 70);
     if (pickedFile != null) {
       setState(() {
         _selectedImage = File(pickedFile.path);
       });
     }
+  }
+
+  void _showImageSourceBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take a Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  pickImage(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> selectDate(BuildContext context) async {
@@ -139,6 +173,16 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("User not logged in");
 
+      String imageUrl = "";
+      if (_selectedImage != null) {
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('donations')
+            .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await storageRef.putFile(_selectedImage!);
+        imageUrl = await storageRef.getDownloadURL();
+      }
+
       await FirebaseFirestore.instance.collection('donations').add({
         'donorId': user.uid,
         'donorName': donorName,
@@ -147,6 +191,7 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
         'size': size,
         'condition': condition,
         'location': _addressController.text.trim(),
+        'imageUrl': imageUrl,
         'pickupDate':
             "${_pickupDate!.year}-${_pickupDate!.month.toString().padLeft(2, '0')}-${_pickupDate!.day.toString().padLeft(2, '0')}",
         'status': "Pending",
@@ -159,7 +204,7 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Donation Registered! Thank you for sharing ❤️"),
+          content: Text("Donation Submitted Successfully 🎉"),
           backgroundColor: Colors.green,
         ),
       );
@@ -214,7 +259,7 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
                 opacity: _fieldFadeAnimations[0],
                 child: Center(
                   child: GestureDetector(
-                    onTap: pickImage,
+                    onTap: _showImageSourceBottomSheet,
                     child: Container(
                       width: 110,
                       height: 110,
@@ -230,7 +275,7 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
                             : null,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.green.withValues(alpha: 0.1),
+                            color: Colors.green.withOpacity(0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           )

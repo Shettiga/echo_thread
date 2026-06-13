@@ -67,12 +67,13 @@ class _LoginScreenState extends State<LoginScreen>
 
       final data = userData.data();
       final role = data?['role'];
+      final uName = data?['name'] ?? 'User';
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login Successful 🎉'),
+        SnackBar(
+          content: Text('Welcome Back, $uName'),
           backgroundColor: Colors.green,
         ),
       );

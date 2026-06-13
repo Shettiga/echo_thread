@@ -14,6 +14,9 @@ class NGODashboard extends StatefulWidget {
 class _NGODashboardState extends State<NGODashboard>
     with SingleTickerProviderStateMixin {
   String userName = "Loading...";
+  String userEmail = "";
+  String userRole = "NGO";
+  String? profileImage;
   late final TabController _tabController;
 
   @override
@@ -40,6 +43,9 @@ class _NGODashboardState extends State<NGODashboard>
       if (mounted) {
         setState(() {
           userName = data.data()?['name'] ?? "NGO Portal";
+          userEmail = data.data()?['email'] ?? user.email ?? "";
+          userRole = data.data()?['role'] ?? "NGO";
+          profileImage = data.data()?['profileImage'];
         });
       }
     }
@@ -52,6 +58,42 @@ class _NGODashboardState extends State<NGODashboard>
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  Future<void> _acceptDonation(BuildContext context, String donationId) async {
+    await FirebaseFirestore.instance
+        .collection('donations')
+        .doc(donationId)
+        .update({
+      'status': 'Accepted by NGO',
+      'acceptedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Donation request accepted! 👍"),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  Future<void> _rejectDonation(BuildContext context, String donationId) async {
+    await FirebaseFirestore.instance
+        .collection('donations')
+        .doc(donationId)
+        .update({
+      'status': 'Rejected',
+      'rejectedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Donation request rejected."),
+        backgroundColor: Colors.redAccent,
+      ),
     );
   }
 
@@ -118,9 +160,14 @@ class _NGODashboardState extends State<NGODashboard>
                           margin: const EdgeInsets.only(bottom: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           child: ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Color(0xFFFFE0B2),
-                              child: Icon(Icons.person, color: Colors.orange),
+                            leading: CircleAvatar(
+                              backgroundColor: const Color(0xFFFFE0B2),
+                              backgroundImage: vData['profileImage'] != null && vData['profileImage'].toString().isNotEmpty
+                                  ? NetworkImage(vData['profileImage'])
+                                  : null,
+                              child: vData['profileImage'] == null || vData['profileImage'].toString().isEmpty
+                                  ? const Icon(Icons.person, color: Colors.orange)
+                                  : null,
                             ),
                             title: Text(vName, style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text(vData['email'] ?? ""),
@@ -131,7 +178,7 @@ class _NGODashboardState extends State<NGODashboard>
                                   .collection('donations')
                                   .doc(donationId)
                                   .update({
-                                'status': 'Assigned',
+                                'status': 'Assigned to Volunteer',
                                 'volunteerId': vId,
                                 'volunteerName': vName,
                                 'assignedAt': FieldValue.serverTimestamp(),
@@ -202,7 +249,7 @@ class _NGODashboardState extends State<NGODashboard>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: themeColor.withValues(alpha: 0.15),
+                    color: themeColor.withOpacity(0.15),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   )
@@ -211,36 +258,78 @@ class _NGODashboardState extends State<NGODashboard>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Hello, $userName 👋",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                "Hello, $userName 👋",
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                userRole,
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        "Manage clothing distribution portal",
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          userEmail,
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.greenAccent),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              "Login Success Status: Active Session",
+                              style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => const ProfileScreen()),
                           );
+                          getUserName(); // Refresh details when returning from profile
                         },
-                        child: const CircleAvatar(
+                        child: CircleAvatar(
                           backgroundColor: Colors.white,
-                          child: Icon(Icons.home_work_outlined, color: Colors.orange),
+                          backgroundImage: profileImage != null && profileImage!.isNotEmpty
+                              ? NetworkImage(profileImage!)
+                              : null,
+                          child: profileImage == null || profileImage!.isEmpty
+                              ? const Icon(Icons.home_work_outlined, color: Colors.orange)
+                              : null,
                         ),
                       ),
                       IconButton(
@@ -263,7 +352,7 @@ class _NGODashboardState extends State<NGODashboard>
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               tabs: const [
                 Tab(text: "Active Actions"),
-                Tab(text: "Distributed History"),
+                Tab(text: "History"),
               ],
             ),
 
@@ -293,19 +382,19 @@ class _NGODashboardState extends State<NGODashboard>
                   return TabBarView(
                     controller: _tabController,
                     children: [
-                      // Active Tab (Pending, Assigned, Picked Up, Delivered)
+                      // Active Tab (Pending, Accepted by NGO, Assigned, Picked Up, Delivered)
                       _buildDonationList(
                         allDonations.where((doc) {
                           final status = (doc.data() as Map<String, dynamic>)['status'];
-                          return status != 'Distributed';
+                          return status != 'Distributed' && status != 'Rejected';
                         }).toList(),
                         isActiveTab: true,
                       ),
-                      // Distributed Tab (Distributed)
+                      // History Tab (Distributed, Rejected)
                       _buildDonationList(
                         allDonations.where((doc) {
                           final status = (doc.data() as Map<String, dynamic>)['status'];
-                          return status == 'Distributed';
+                          return status == 'Distributed' || status == 'Rejected';
                         }).toList(),
                         isActiveTab: false,
                       ),
@@ -333,7 +422,7 @@ class _NGODashboardState extends State<NGODashboard>
             ),
             const SizedBox(height: 12),
             Text(
-              isActiveTab ? "No active donations to manage" : "No garments distributed yet",
+              isActiveTab ? "No active donations to manage" : "No donation history found",
               style: TextStyle(color: Colors.grey.shade600, fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ],
@@ -353,13 +442,14 @@ class _NGODashboardState extends State<NGODashboard>
         final String qty = data['quantity']?.toString() ?? "1";
         final String donor = data['donorName'] ?? "Donor";
         final String location = data['location'] ?? "Unknown";
+        final String? photoUrl = data['imageUrl'];
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: Colors.orange.withValues(alpha: 0.15), width: 1.2),
+            side: BorderSide(color: Colors.orange.withOpacity(0.15), width: 1.2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -386,8 +476,38 @@ class _NGODashboardState extends State<NGODashboard>
                   "Address: $location",
                   style: const TextStyle(color: Colors.black54, fontSize: 12.5),
                 ),
+
+                // Render Donation photo if available
+                if (photoUrl != null && photoUrl.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      photoUrl,
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 140,
+                        color: Colors.grey.shade200,
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                      ),
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          height: 140,
+                          color: Colors.grey.shade100,
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(color: Colors.orange),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+
                 if (data['volunteerName'] != null) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       const Icon(Icons.directions_run_outlined, size: 16, color: Colors.orange),
@@ -404,7 +524,29 @@ class _NGODashboardState extends State<NGODashboard>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      if (status == 'Pending')
+                      if (status == 'Pending') ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _rejectDonation(context, dId),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.redAccent),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.redAccent),
+                          label: const Text("Reject", style: TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () => _acceptDonation(context, dId),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade700,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
+                          label: const Text("Accept", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ] else if (status == 'Accepted by NGO' || status == 'Accepted') ...[
                         ElevatedButton.icon(
                           onPressed: () => _showAssignVolunteerSheet(context, dId),
                           style: ElevatedButton.styleFrom(
@@ -414,25 +556,28 @@ class _NGODashboardState extends State<NGODashboard>
                           ),
                           icon: const Icon(Icons.assignment_ind_outlined, size: 16, color: Colors.white),
                           label: const Text("Assign Volunteer", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
-                        )
-                      else if (status == 'Delivered')
+                        ),
+                      ] else if (status == 'Delivered') ...[
                         ElevatedButton.icon(
                           onPressed: () => _distributeClothes(context, dId),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
+                            backgroundColor: Colors.teal.shade700,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           ),
                           icon: const Icon(Icons.volunteer_activism_outlined, size: 16, color: Colors.white),
                           label: const Text("Distribute to Needy", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
-                        )
-                      else
+                        ),
+                      ] else ...[
                         Text(
-                          status == 'Assigned'
-                              ? "Waiting for volunteer pickup..."
-                              : "Garments are in transit...",
+                          status == 'Assigned to Volunteer'
+                              ? "Awaiting volunteer acceptance..."
+                              : status == 'Accepted by Volunteer'
+                                  ? "Volunteer accepted. Awaiting pickup..."
+                                  : "Garments are in transit...",
                           style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.black45),
                         )
+                      ]
                     ],
                   )
                 ]
@@ -453,13 +598,22 @@ class _NGODashboardState extends State<NGODashboard>
         bg = Colors.orange.shade50;
         text = Colors.orange.shade800;
         break;
-      case "Assigned":
+      case "Accepted by NGO":
+      case "Accepted":
         bg = Colors.blue.shade50;
         text = Colors.blue.shade800;
         break;
-      case "Picked Up":
+      case "Assigned to Volunteer":
+        bg = Colors.indigo.shade50;
+        text = Colors.indigo.shade800;
+        break;
+      case "Accepted by Volunteer":
         bg = Colors.purple.shade50;
         text = Colors.purple.shade800;
+        break;
+      case "Picked Up":
+        bg = Colors.pink.shade50;
+        text = Colors.pink.shade800;
         break;
       case "Delivered":
         bg = Colors.green.shade50;
@@ -468,6 +622,10 @@ class _NGODashboardState extends State<NGODashboard>
       case "Distributed":
         bg = Colors.teal.shade50;
         text = Colors.teal.shade800;
+        break;
+      case "Rejected":
+        bg = Colors.red.shade50;
+        text = Colors.red.shade800;
         break;
     }
 

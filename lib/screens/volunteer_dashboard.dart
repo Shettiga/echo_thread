@@ -14,6 +14,9 @@ class VolunteerDashboard extends StatefulWidget {
 class _VolunteerDashboardState extends State<VolunteerDashboard>
     with SingleTickerProviderStateMixin {
   String userName = "Loading...";
+  String userEmail = "";
+  String userRole = "Volunteer";
+  String? profileImage;
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
 
@@ -47,6 +50,9 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
       if (mounted) {
         setState(() {
           userName = data.data()?['name'] ?? "Volunteer Portal";
+          userEmail = data.data()?['email'] ?? user.email ?? "";
+          userRole = data.data()?['role'] ?? "Volunteer";
+          profileImage = data.data()?['profileImage'];
         });
       }
     }
@@ -71,14 +77,19 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
     });
 
     if (!mounted) return;
-    String toastMsg = nextStatus == 'Picked Up'
-        ? "Marked as Picked Up! Drive safely! 🚗"
-        : "Garments delivered to the NGO hub! Thank you! 🎉";
+    String toastMsg = "";
+    if (nextStatus == 'Accepted by Volunteer') {
+      toastMsg = "Task Accepted Successfully! 📋";
+    } else if (nextStatus == 'Picked Up') {
+      toastMsg = "Marked as Picked Up! Drive safely! 🚗";
+    } else {
+      toastMsg = "Garments delivered to the NGO hub! Thank you! 🎉";
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(toastMsg),
-        backgroundColor: Colors.blue.shade800,
+        backgroundColor: Colors.blue.shade850,
       ),
     );
   }
@@ -110,7 +121,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: themeColor.withValues(alpha: 0.15),
+                      color: themeColor.withOpacity(0.15),
                       blurRadius: 12,
                       offset: const Offset(0, 6),
                     )
@@ -119,36 +130,68 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Hello, $userName 👋",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  "Hello, $userName 👋",
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  userRole,
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 5),
-                        const Text(
-                          "Ready to support community tasks?",
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            userEmail,
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "Welcome Back, $userName!",
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                     ),
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const ProfileScreen()),
                             );
+                            getUserName(); // Refresh details when returning from profile
                           },
-                          child: const CircleAvatar(
+                          child: CircleAvatar(
                             backgroundColor: Colors.white,
-                            child: Icon(Icons.volunteer_activism_outlined, color: Colors.blue),
+                            backgroundImage: profileImage != null && profileImage!.isNotEmpty
+                                ? NetworkImage(profileImage!)
+                                : null,
+                            child: profileImage == null || profileImage!.isEmpty
+                                ? const Icon(Icons.volunteer_activism_outlined, color: Colors.blue)
+                                : null,
                           ),
                         ),
                         IconButton(
@@ -208,13 +251,17 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
 
                     final tasks = snapshot.data!.docs.where((doc) {
                       final status = (doc.data() as Map<String, dynamic>)['status'];
-                      return status == 'Assigned' || status == 'Picked Up' || status == 'Delivered';
+                      return status == 'Assigned to Volunteer' ||
+                          status == 'Assigned' ||
+                          status == 'Accepted by Volunteer' ||
+                          status == 'Picked Up' ||
+                          status == 'Delivered';
                     }).toList();
 
                     if (tasks.isEmpty) {
                       return Center(
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisAlignment: Main => mainAxisAlignment.center,
                           children: [
                             Icon(Icons.check_circle_outline, size: 64, color: Colors.grey.shade400),
                             const SizedBox(height: 12),
@@ -237,16 +284,21 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                         final String status = data['status'] ?? "Pending";
                         final String clothes = data['clothes'] ?? "Clothes";
                         final String qty = data['quantity']?.toString() ?? "1";
+                        final String donorId = data['donorId'] ?? "";
                         final String donor = data['donorName'] ?? "Donor";
                         final String address = data['location'] ?? "No address";
                         final String pickupDate = data['pickupDate'] ?? "Soon";
+                        final String? photoUrl = data['imageUrl'];
+                        final String assignedDate = data['assignedAt'] != null
+                            ? (data['assignedAt'] as Timestamp).toDate().toString().substring(0, 10)
+                            : pickupDate;
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 14),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: Colors.blue.withValues(alpha: 0.15), width: 1.2),
+                            side: BorderSide(color: Colors.blue.withOpacity(0.15), width: 1.2),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(18),
@@ -264,41 +316,95 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                   ],
                                 ),
                                 const Divider(height: 24),
-                                const Text(
-                                  "NGO Message:",
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54),
+
+                                // Fetch Donor phone/email in real time from users collection
+                                FutureBuilder<DocumentSnapshot>(
+                                  future: FirebaseFirestore.instance.collection('users').doc(donorId).get(),
+                                  builder: (context, userSnapshot) {
+                                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                                      return const Text("Loading donor details...", style: TextStyle(fontSize: 12, color: Colors.grey));
+                                    }
+                                    final uData = userSnapshot.data?.data() as Map<String, dynamic>?;
+                                    final String dPhone = uData?['phone'] ?? "No Phone";
+                                    final String dEmail = uData?['email'] ?? "No Email";
+
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Donor Details: $donor",
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text("📞 Phone: $dPhone", style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
+                                        Text("✉️ Email: $dEmail", style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
+                                      ],
+                                    );
+                                  },
                                 ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade50.withValues(alpha: 0.5),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    "Instructions: Please collect these clothes from donor $donor at their address on $pickupDate.",
-                                    style: TextStyle(color: Colors.blue.shade900, fontSize: 12.5, height: 1.3),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 10),
                                 Text(
-                                  "Donor Address: $address",
+                                  "Pickup Address: $address",
                                   style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
                                 ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Assigned Date: $assignedDate",
+                                  style: const TextStyle(color: Colors.black54, fontSize: 12.5),
+                                ),
+
+                                // Display Photo if available
+                                if (photoUrl != null && photoUrl.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.network(
+                                      photoUrl,
+                                      height: 140,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        height: 140,
+                                        color: Colors.grey.shade200,
+                                        alignment: Alignment.center,
+                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                      ),
+                                      loadingBuilder: (context, child, progress) {
+                                        if (progress == null) return child;
+                                        return Container(
+                                          height: 140,
+                                          color: Colors.grey.shade100,
+                                          alignment: Alignment.center,
+                                          child: const CircularProgressIndicator(color: Colors.blue),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+
                                 const SizedBox(height: 16),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    if (status == 'Assigned')
+                                    if (status == 'Assigned to Volunteer' || status == 'Assigned')
                                       ElevatedButton.icon(
-                                        onPressed: () => _updateTaskStatus(taskId, 'Picked Up'),
+                                        onPressed: () => _updateTaskStatus(taskId, 'Accepted by Volunteer'),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.blue.shade700,
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                         ),
+                                        icon: const Icon(Icons.thumb_up_alt_outlined, color: Colors.white, size: 16),
+                                        label: const Text("Accept Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                      )
+                                    else if (status == 'Accepted by Volunteer')
+                                      ElevatedButton.icon(
+                                        onPressed: () => _updateTaskStatus(taskId, 'Picked Up'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.purple.shade700,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
                                         icon: const Icon(Icons.airport_shuttle_outlined, color: Colors.white, size: 16),
-                                        label: const Text("Mark as Picked Up", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                        label: const Text("Mark Pickup Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       )
                                     else if (status == 'Picked Up')
                                       ElevatedButton.icon(
@@ -308,12 +414,12 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                         ),
                                         icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
-                                        label: const Text("Mark as Delivered", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                        label: const Text("Mark Delivered", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       )
                                     else
                                       const Row(
                                         children: [
-                                          Icon(Icons.check, color: Colors.green),
+                                          Icon(Icons.check_circle, color: Colors.green),
                                           SizedBox(width: 4),
                                           Text(
                                             "Delivered to NGO hub",
@@ -344,7 +450,12 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
     Color text = Colors.grey;
 
     switch (status) {
+      case "Assigned to Volunteer":
       case "Assigned":
+        bg = Colors.indigo.shade50;
+        text = Colors.indigo.shade800;
+        break;
+      case "Accepted by Volunteer":
         bg = Colors.blue.shade50;
         text = Colors.blue.shade800;
         break;

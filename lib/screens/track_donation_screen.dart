@@ -80,6 +80,10 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
             itemBuilder: (context, index) {
               var data = docs[index].data() as Map<String, dynamic>;
               bool isExpanded = _expandedIndex == index;
+              String rawStatus = data['status'] ?? "Pending";
+              String displayStatus = rawStatus;
+              if (rawStatus == 'Accepted') displayStatus = 'Accepted by NGO';
+              if (rawStatus == 'Assigned') displayStatus = 'Assigned to Volunteer';
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 350),
@@ -90,7 +94,7 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
+                      color: Colors.black.withOpacity(0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     )
@@ -105,12 +109,12 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
                         leading: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(data['status']).withValues(alpha: 0.1),
+                            color: _getStatusColor(rawStatus).withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            _getStatusIcon(data['status']),
-                            color: _getStatusColor(data['status']),
+                            _getStatusIcon(rawStatus),
+                            color: _getStatusColor(rawStatus),
                             size: 26,
                           ),
                         ),
@@ -129,15 +133,15 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: _getStatusColor(data['status']).withValues(alpha: 0.15),
+                                  color: _getStatusColor(rawStatus).withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  data['status'],
+                                  displayStatus,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: _getStatusColor(data['status']),
+                                    color: _getStatusColor(rawStatus),
                                   ),
                                 ),
                               ),
@@ -172,7 +176,7 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
                               ),
                               const SizedBox(height: 20),
                               _buildVerticalStepper(
-                                status: data['status'],
+                                status: rawStatus,
                                 volunteerName: data['volunteerName'],
                               ),
                             ],
@@ -191,15 +195,33 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
   }
 
   Widget _buildVerticalStepper({required String status, String? volunteerName}) {
-    final steps = ["Pending", "Assigned", "Picked Up", "Delivered", "Distributed"];
-    final currentIdx = steps.indexOf(status);
+    final steps = [
+      "Pending",
+      "Accepted by NGO",
+      "Assigned to Volunteer",
+      "Accepted by Volunteer",
+      "Picked Up",
+      "Delivered",
+      "Distributed"
+    ];
+
+    String normalizedStatus = status;
+    if (status == 'Accepted') normalizedStatus = 'Accepted by NGO';
+    if (status == 'Assigned') normalizedStatus = 'Assigned to Volunteer';
+
+    int currentIdx = steps.indexOf(normalizedStatus);
+    if (currentIdx == -1) {
+      currentIdx = 0;
+    }
 
     final Map<String, String> stepDescriptions = {
       "Pending": "Donation request submitted. Awaiting NGO review.",
-      "Assigned": "NGO accepted your donation. Volunteer ${volunteerName ?? 'assigned'} is picking it up.",
-      "Picked Up": "Volunteer has collected the clothes and is bringing them to the NGO hub.",
-      "Delivered": "Clothes successfully received by the NGO hub.",
-      "Distributed": "Clothes have been successfully given to people in need! Thank you! ❤️",
+      "Accepted by NGO": "NGO accepted your donation. Selecting a volunteer.",
+      "Assigned to Volunteer": "Volunteer ${volunteerName ?? ''} has been assigned to pickup.",
+      "Accepted by Volunteer": "Volunteer accepted task. Starting pickup soon.",
+      "Picked Up": "Volunteer has collected the clothes and is in transit.",
+      "Delivered": "Clothes successfully received at the NGO hub.",
+      "Distributed": "Clothes have been successfully given to people in need! ❤️",
     };
 
     return Column(
@@ -233,7 +255,7 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
                 if (index < steps.length - 1)
                   Container(
                     width: 2,
-                    height: 44,
+                    height: 36,
                     color: index < currentIdx ? const Color(0xFF2E7D32) : Colors.grey.shade300,
                   ),
               ],
@@ -275,8 +297,14 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
     switch (status) {
       case "Pending":
         return Colors.orange.shade700;
-      case "Assigned":
+      case "Accepted":
+      case "Accepted by NGO":
         return Colors.blue.shade700;
+      case "Assigned":
+      case "Assigned to Volunteer":
+        return Colors.indigo.shade700;
+      case "Accepted by Volunteer":
+        return Colors.deepPurple.shade700;
       case "Picked Up":
         return Colors.purple.shade700;
       case "Delivered":
@@ -292,8 +320,14 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
     switch (status) {
       case "Pending":
         return Icons.hourglass_top_outlined;
+      case "Accepted":
+      case "Accepted by NGO":
+        return Icons.check_circle_outline;
       case "Assigned":
+      case "Assigned to Volunteer":
         return Icons.person_pin_outlined;
+      case "Accepted by Volunteer":
+        return Icons.thumb_up_outlined;
       case "Picked Up":
         return Icons.local_shipping_outlined;
       case "Delivered":

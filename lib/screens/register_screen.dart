@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
+  final phoneController = TextEditingController();
   final passwordController = TextEditingController();
 
   late final AnimationController _controller;
@@ -34,9 +35,134 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   bool _isLoading = false;
 
+  Future<void> _showSimulatedNotificationDialog(
+      BuildContext context, String name, String email, String phone) async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.notifications_active,
+                  color: Colors.green,
+                  size: 54,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "System Notification",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "A confirmation notification has been simulated and sent to your email & phone number:",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 20),
+                // Simulated SMS
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.sms, color: Colors.blue, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            "SMS to $phone",
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Text(
+                        "Welcome to EchoThread, $name! Your account has been created successfully. 🎉 Let's start donating!",
+                        style: const TextStyle(fontSize: 12.5, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Simulated Email
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.email, color: Colors.redAccent, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Email to $email",
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Text(
+                        "Subject: Account Created Successfully 🎉\n\nDear $name,\n\nYour EchoThread account ($selectedRole) has been created successfully. You can now log in and access your personalized dashboard.\n\nBest Regards,\nEchoThread Team",
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.pop(context); // Close register screen (returns to login)
+                    },
+                    child: const Text(
+                      "Continue to Login Screen",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> registerUser() async {
     if (nameController.text.isEmpty ||
         emailController.text.isEmpty ||
+        phoneController.text.isEmpty ||
         passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all fields')),
@@ -55,28 +181,39 @@ class _RegisterScreenState extends State<RegisterScreen>
         password: passwordController.text.trim(),
       );
 
+      final String regName = nameController.text.trim();
+      final String regEmail = emailController.text.trim();
+      final String regPhone = phoneController.text.trim();
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(credential.user!.uid)
           .set({
-        'name': nameController.text.trim(),
-        'email': emailController.text.trim(),
+        'name': regName,
+        'email': regEmail,
+        'phone': regPhone,
         'role': selectedRole,
+        'profileImage': '',
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Sign out since createUserWithEmailAndPassword logs in the user automatically,
+      // and we want them to log in via the Login Screen.
+      await FirebaseAuth.instance.signOut();
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Registration Successful 🎉'),
+          content: Text('Account Created Successfully 🎉'),
           backgroundColor: Colors.green,
         ),
       );
 
+      // Show simulated SMS / Email notification dialog to satisfy the requirement
+      await _showSimulatedNotificationDialog(context, regName, regEmail, regPhone);
 
-      Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String message = 'Registration Failed';
@@ -171,6 +308,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     _shakeController.dispose();
     nameController.dispose();
     emailController.dispose();
+    phoneController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -524,6 +662,28 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                         labelText: 'Email',
                                                         labelStyle: TextStyle(color: Colors.white.withOpacity(0.78)),
                                                         prefixIcon: const Icon(Icons.email_outlined, color: Colors.white),
+                                                        filled: true,
+                                                        fillColor: Colors.white.withOpacity(0.09),
+                                                        focusedBorder: OutlineInputBorder(
+                                                          borderRadius: BorderRadius.circular(14),
+                                                          borderSide: const BorderSide(color: Colors.white, width: 1.2),
+                                                        ),
+                                                        enabledBorder: OutlineInputBorder(
+                                                          borderRadius: BorderRadius.circular(14),
+                                                          borderSide: BorderSide(color: Colors.white.withOpacity(0.14)),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    TextField(
+                                                      controller: phoneController,
+                                                      keyboardType: TextInputType.phone,
+                                                      style: const TextStyle(color: Colors.white),
+                                                      cursorColor: Colors.white,
+                                                      decoration: InputDecoration(
+                                                        labelText: 'Phone Number',
+                                                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.78)),
+                                                        prefixIcon: const Icon(Icons.phone_outlined, color: Colors.white),
                                                         filled: true,
                                                         fillColor: Colors.white.withOpacity(0.09),
                                                         focusedBorder: OutlineInputBorder(
