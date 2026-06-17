@@ -212,6 +212,12 @@ class _DonorDashboardState extends State<DonorDashboard>
                         .where('donorId', isEqualTo: user?.uid)
                         .snapshots(),
                     builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        debugPrint("[DONOR_DASHBOARD_STREAM_ERROR] Error: ${snapshot.error}");
+                      }
+                      if (snapshot.hasData) {
+                        debugPrint("[DONOR_DASHBOARD_STREAM_DATA] Received docs count: ${snapshot.data!.docs.length}");
+                      }
                       int totalGarments = 0;
                       int peopleHelped = 0;
                       double co2Saved = 0.0;
@@ -458,6 +464,13 @@ class SustainabilityReportScreen extends StatelessWidget {
             .where('donorId', isEqualTo: user?.uid)
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            debugPrint("[SUSTAINABILITY_REPORT_STREAM_ERROR] Error: ${snapshot.error}");
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+          if (snapshot.hasData) {
+            debugPrint("[SUSTAINABILITY_REPORT_STREAM_DATA] Received docs count: ${snapshot.data!.docs.length}");
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Colors.green));
           }

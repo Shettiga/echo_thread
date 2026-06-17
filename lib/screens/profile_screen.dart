@@ -225,15 +225,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final String newPhone = phoneController.text.trim();
 
       // Update in Firestore
+      final String uid = user.uid;
+      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: users, DocID: $uid");
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(uid)
           .update({
         'name': newName,
         'email': newEmail,
         'phone': newPhone,
         'profileImage': newImageUrl,
-      });
+      }).timeout(const Duration(seconds: 10));
+      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: users, DocID: $uid, Response: User profile updated successfully");
 
       // Try updating in Auth
       if (newEmail != user.email) {
@@ -262,11 +265,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Profile Updated Successfully'),
+            content: Text('Profile updated successfully'),
             backgroundColor: Colors.green,
           ),
         );
       }
+    } on FirebaseException catch (e) {
+      final String uid = user.uid;
+      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $uid, Collection: users, DocID: $uid, Exception: ${e.code} - ${e.message}");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Firebase Error: ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
       debugPrint("Error during profile update or image upload: $e");
       if (!mounted) return;

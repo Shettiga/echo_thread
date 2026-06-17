@@ -4,7 +4,13 @@ import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();   // ✅ REQUIRED
-  await Firebase.initializeApp();              // ✅ INITIALIZE FIREBASE
+  try {
+    debugPrint("[FIREBASE_INIT] Starting Firebase initialization...");
+    await Firebase.initializeApp();              // ✅ INITIALIZE FIREBASE
+    debugPrint("[FIREBASE_INIT] Firebase initialization succeeded.");
+  } catch (e) {
+    debugPrint("[FIREBASE_INIT_ERROR] Firebase initialization failed: $e");
+  }
   runApp(const EcchoThreadApp());
 }
 

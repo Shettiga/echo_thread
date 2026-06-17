@@ -62,39 +62,73 @@ class _NGODashboardState extends State<NGODashboard>
   }
 
   Future<void> _acceptDonation(BuildContext context, String donationId) async {
-    await FirebaseFirestore.instance
-        .collection('donations')
-        .doc(donationId)
-        .update({
-      'status': 'Accepted by NGO',
-      'acceptedAt': FieldValue.serverTimestamp(),
-    });
+    final user = FirebaseAuth.instance.currentUser;
+    final String uid = user?.uid ?? 'unknown';
+    try {
+      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: $donationId");
+      await FirebaseFirestore.instance
+          .collection('donations')
+          .doc(donationId)
+          .update({
+        'status': 'Accepted by NGO',
+        'acceptedAt': FieldValue.serverTimestamp(),
+      }).timeout(const Duration(seconds: 10));
+      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: $donationId, Response: Donation accepted successfully");
 
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Donation request accepted! 👍"),
-        backgroundColor: Colors.green,
-      ),
-    );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Donation request accepted! 👍"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } on FirebaseException catch (e) {
+      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $uid, Collection: donations, DocID: $donationId, Exception: ${e.code} - ${e.message}");
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Firebase Error: ${e.message}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error accepting donation: $e");
+    }
   }
 
   Future<void> _rejectDonation(BuildContext context, String donationId) async {
-    await FirebaseFirestore.instance
-        .collection('donations')
-        .doc(donationId)
-        .update({
-      'status': 'Rejected',
-      'rejectedAt': FieldValue.serverTimestamp(),
-    });
+    final user = FirebaseAuth.instance.currentUser;
+    final String uid = user?.uid ?? 'unknown';
+    try {
+      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: $donationId");
+      await FirebaseFirestore.instance
+          .collection('donations')
+          .doc(donationId)
+          .update({
+        'status': 'Rejected',
+        'rejectedAt': FieldValue.serverTimestamp(),
+      }).timeout(const Duration(seconds: 10));
+      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: $donationId, Response: Donation rejected successfully");
 
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Donation request rejected."),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Donation request rejected."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } on FirebaseException catch (e) {
+      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $uid, Collection: donations, DocID: $donationId, Exception: ${e.code} - ${e.message}");
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Firebase Error: ${e.message}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error rejecting donation: $e");
+    }
   }
 
   Future<void> _showAssignVolunteerSheet(BuildContext context, String donationId) async {
@@ -173,25 +207,43 @@ class _NGODashboardState extends State<NGODashboard>
                             subtitle: Text(vData['email'] ?? ""),
                             trailing: const Icon(Icons.chevron_right, color: Colors.orange),
                             onTap: () async {
-                              // Assign volunteer in Firestore
-                              await FirebaseFirestore.instance
-                                  .collection('donations')
-                                  .doc(donationId)
-                                  .update({
-                                'status': 'Assigned to Volunteer',
-                                'volunteerId': vId,
-                                'volunteerName': vName,
-                                'assignedAt': FieldValue.serverTimestamp(),
-                              });
+                              final user = FirebaseAuth.instance.currentUser;
+                              final String uid = user?.uid ?? 'unknown';
+                              try {
+                                debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: $donationId");
+                                // Assign volunteer in Firestore
+                                await FirebaseFirestore.instance
+                                    .collection('donations')
+                                    .doc(donationId)
+                                    .update({
+                                  'status': 'Assigned to Volunteer',
+                                  'volunteerId': vId,
+                                  'volunteerName': vName,
+                                  'assignedAt': FieldValue.serverTimestamp(),
+                                }).timeout(const Duration(seconds: 10));
+                                debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: $donationId, Response: Volunteer assigned successfully");
 
-                              if (!context.mounted) return;
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("Assigned to $vName! 🚚"),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
+                                if (!context.mounted) return;
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Volunteer assigned successfully"),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } on FirebaseException catch (e) {
+                                debugPrint("[FIRESTORE_WRITE_ERROR] UID: $uid, Collection: donations, DocID: $donationId, Exception: ${e.code} - ${e.message}");
+                                if (!context.mounted) return;
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Firebase Error: ${e.message}"),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              } catch (e) {
+                                debugPrint("Error assigning volunteer: $e");
+                              }
                             },
                           ),
                         );
@@ -208,21 +260,38 @@ class _NGODashboardState extends State<NGODashboard>
   }
 
   Future<void> _distributeClothes(BuildContext context, String donationId) async {
-    await FirebaseFirestore.instance
-        .collection('donations')
-        .doc(donationId)
-        .update({
-      'status': 'Distributed',
-      'distributedAt': FieldValue.serverTimestamp(),
-    });
+    final user = FirebaseAuth.instance.currentUser;
+    final String uid = user?.uid ?? 'unknown';
+    try {
+      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: $donationId");
+      await FirebaseFirestore.instance
+          .collection('donations')
+          .doc(donationId)
+          .update({
+        'status': 'Distributed',
+        'distributedAt': FieldValue.serverTimestamp(),
+      }).timeout(const Duration(seconds: 10));
+      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: $donationId, Response: Clothes distributed successfully");
 
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Clothes marked as Distributed to the Needy! 🎁"),
-        backgroundColor: Colors.green,
-      ),
-    );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Clothes marked as Distributed to the Needy! 🎁"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } on FirebaseException catch (e) {
+      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $uid, Collection: donations, DocID: $donationId, Exception: ${e.code} - ${e.message}");
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Firebase Error: ${e.message}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error distributing clothes: $e");
+    }
   }
 
   @override
@@ -361,6 +430,13 @@ class _NGODashboardState extends State<NGODashboard>
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance.collection('donations').snapshots(),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    debugPrint("[NGO_DASHBOARD_STREAM_ERROR] Error: ${snapshot.error}");
+                    return Center(child: Text("Error: ${snapshot.error}"));
+                  }
+                  if (snapshot.hasData) {
+                    debugPrint("[NGO_DASHBOARD_STREAM_DATA] Received docs count: ${snapshot.data!.docs.length}");
+                  }
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator(color: Colors.orange));
                   }

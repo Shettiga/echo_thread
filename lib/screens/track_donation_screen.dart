@@ -39,6 +39,13 @@ class _TrackDonationScreenState extends State<TrackDonationScreen> {
             .where('donorId', isEqualTo: userId)
             .snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.hasError) {
+            debugPrint("[TRACK_DONATION_STREAM_ERROR] Error: ${snapshot.error}");
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+          if (snapshot.hasData) {
+            debugPrint("[TRACK_DONATION_STREAM_DATA] Received docs count: ${snapshot.data!.docs.length}");
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
           }

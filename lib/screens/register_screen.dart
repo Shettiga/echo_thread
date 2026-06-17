@@ -174,6 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       _isLoading = true;
     });
 
+    String? currentUid;
     try {
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
@@ -181,13 +182,15 @@ class _RegisterScreenState extends State<RegisterScreen>
         password: passwordController.text.trim(),
       );
 
+      currentUid = credential.user!.uid;
       final String regName = nameController.text.trim();
       final String regEmail = emailController.text.trim();
       final String regPhone = phoneController.text.trim();
 
+      debugPrint("[FIRESTORE_WRITE_START] UID: $currentUid, Collection: users, DocID: $currentUid");
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(credential.user!.uid)
+          .doc(currentUid)
           .set({
         'name': regName,
         'email': regEmail,
@@ -195,7 +198,8 @@ class _RegisterScreenState extends State<RegisterScreen>
         'role': selectedRole,
         'profileImage': '',
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      }).timeout(const Duration(seconds: 10));
+      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $currentUid, Collection: users, DocID: $currentUid, Response: User registered successfully");
 
       // Sign out since createUserWithEmailAndPassword logs in the user automatically,
       // and we want them to log in via the Login Screen.
@@ -223,6 +227,16 @@ class _RegisterScreenState extends State<RegisterScreen>
       _shakeController.forward(from: 0.0);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
+      );
+    } on FirebaseException catch (e) {
+      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $currentUid, Collection: users, DocID: $currentUid, Exception: ${e.code} - ${e.message}");
+      if (!mounted) return;
+      _shakeController.forward(from: 0.0);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Firebase Error: ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
       );
     } catch (e) {
       debugPrint("Unknown exception during registration: $e");

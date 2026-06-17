@@ -178,8 +178,10 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
         imageUrl = await CloudinaryService.uploadImage(_selectedImage!);
       }
 
-      await FirebaseFirestore.instance.collection('donations').add({
-        'donorId': user.uid,
+      final String uid = user.uid;
+      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: new_document");
+      final docRef = await FirebaseFirestore.instance.collection('donations').add({
+        'donorId': uid,
         'donorName': donorName,
         'clothes': category,
         'quantity': _quantityController.text.trim(),
@@ -193,18 +195,29 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
         'volunteerId': null,
         'volunteerName': null,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      }).timeout(const Duration(seconds: 10));
+      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: ${docRef.id}, Response: Donation submitted successfully");
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Donation Submitted Successfully 🎉"),
+          content: Text("Donated successfully"),
           backgroundColor: Colors.green,
         ),
       );
 
       Navigator.pop(context);
+    } on FirebaseException catch (e) {
+      final String uid = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $uid, Collection: donations, DocID: unknown, Exception: ${e.code} - ${e.message}");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Firebase Error: ${e.message}"),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
       debugPrint("Error during donation submission or image upload: $e");
       if (!mounted) return;

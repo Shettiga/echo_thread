@@ -69,30 +69,47 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
   }
 
   Future<void> _updateTaskStatus(String donationId, String nextStatus) async {
-    await FirebaseFirestore.instance
-        .collection('donations')
-        .doc(donationId)
-        .update({
-      'status': nextStatus,
-    });
+    final user = FirebaseAuth.instance.currentUser;
+    final String uid = user?.uid ?? 'unknown';
+    try {
+      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: $donationId");
+      await FirebaseFirestore.instance
+          .collection('donations')
+          .doc(donationId)
+          .update({
+        'status': nextStatus,
+      }).timeout(const Duration(seconds: 10));
+      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: $donationId, Response: Task status updated to $nextStatus successfully");
 
-    if (!mounted) return;
-    String toastMsg = "";
-    if (nextStatus == 'Accepted by Volunteer') {
-      toastMsg = "Task Accepted Successfully! 📋";
-    } else if (nextStatus == 'Picked Up') {
-      toastMsg = "Marked as Picked Up! Drive safely! 🚗";
-    } else {
-      toastMsg = "Garments delivered to the NGO hub! Thank you! 🎉";
+      if (!mounted) return;
+      String toastMsg = "";
+      if (nextStatus == 'Accepted by Volunteer') {
+        toastMsg = "Task Accepted Successfully! 📋";
+      } else if (nextStatus == 'Picked Up') {
+        toastMsg = "Marked as Picked Up! Drive safely! 🚗";
+      } else {
+        toastMsg = "Garments delivered to the NGO hub! Thank you! 🎉";
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(toastMsg),
+          backgroundColor: Colors.blue.shade900,
+        ),
+      );
+    } on FirebaseException catch (e) {
+      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $uid, Collection: donations, DocID: $donationId, Exception: ${e.code} - ${e.message}");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Firebase Error: ${e.message}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error updating status: $e");
     }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(toastMsg),
-        backgroundColor: Colors.blue.shade900,
-      ),
-    );
   }
 
   @override
@@ -231,6 +248,13 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                       .where('volunteerId', isEqualTo: user?.uid)
                       .snapshots(),
                   builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      debugPrint("[VOLUNTEER_DASHBOARD_STREAM_ERROR] Error: ${snapshot.error}");
+                      return Center(child: Text("Error: ${snapshot.error}"));
+                    }
+                    if (snapshot.hasData) {
+                      debugPrint("[VOLUNTEER_DASHBOARD_STREAM_DATA] Received docs count: ${snapshot.data!.docs.length}");
+                    }
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator(color: Colors.blue));
                     }
