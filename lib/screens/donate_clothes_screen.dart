@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:echo_thread/services/cloudinary_service.dart';
 
 class DonateClothesScreen extends StatefulWidget {
   const DonateClothesScreen({super.key});
@@ -175,12 +175,7 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
 
       String imageUrl = "";
       if (_selectedImage != null) {
-        final storageRef = FirebaseStorage.instance
-            .ref()
-            .child('donations')
-            .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await storageRef.putFile(_selectedImage!);
-        imageUrl = await storageRef.getDownloadURL();
+        imageUrl = await CloudinaryService.uploadImage(_selectedImage!);
       }
 
       await FirebaseFirestore.instance.collection('donations').add({

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:echo_thread/services/cloudinary_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -215,14 +215,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       String newImageUrl = profileImageUrl ?? '';
 
-      // If a new image was picked, upload it to Firebase Storage
+      // If a new image was picked, upload it to Cloudinary
       if (_selectedProfileImage != null) {
-        final storageRef = FirebaseStorage.instance
-            .ref()
-            .child('profile_photos')
-            .child('${user.uid}.jpg');
-        await storageRef.putFile(_selectedProfileImage!);
-        newImageUrl = await storageRef.getDownloadURL();
+        newImageUrl = await CloudinaryService.uploadImage(_selectedProfileImage!);
       }
 
       final String newEmail = emailController.text.trim();
@@ -244,12 +239,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (newEmail != user.email) {
         try {
           await user.verifyBeforeUpdateEmail(newEmail);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Verification email sent to verify new address.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Verification email sent to verify new address.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
         } catch (authError) {
           debugPrint("Auth email update error: $authError");
         }
@@ -263,14 +260,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _selectedProfileImage = null;
           _isEditing = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile Updated Successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile Updated Successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
     } catch (e) {
       debugPrint("Error during profile update or image upload: $e");
       if (!mounted) return;
