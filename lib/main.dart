@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';   // ✅ ADD THIS
 import 'screens/splash_screen.dart';
+import 'services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();   // ✅ REQUIRED
@@ -11,6 +12,10 @@ void main() async {
   } catch (e) {
     debugPrint("[FIREBASE_INIT_ERROR] Firebase initialization failed: $e");
   }
+  
+  final themeService = ThemeService();
+  await themeService.init();
+  
   runApp(const EcchoThreadApp());
 }
 
@@ -19,14 +24,20 @@ class EcchoThreadApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Eccho Thread',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        scaffoldBackgroundColor: const Color(0xFF0F3D2E),
-      ),
-      home: const SplashScreen(),   // ✅ KEEP YOUR EXISTING FLOW
+    final themeService = ThemeService();
+
+    return ListenableBuilder(
+      listenable: themeService,
+      builder: (context, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Eccho Thread',
+          themeMode: themeService.themeMode,
+          theme: themeService.lightTheme,
+          darkTheme: themeService.darkTheme,
+          home: const SplashScreen(),   // ✅ KEEP YOUR EXISTING FLOW
+        );
+      },
     );
   }
 }

@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'package:echo_thread/widgets/navigation_drawer.dart';
+import 'package:echo_thread/services/theme_service.dart';
 
 class NGODashboard extends StatefulWidget {
   const NGODashboard({super.key});
@@ -13,6 +15,7 @@ class NGODashboard extends StatefulWidget {
 
 class _NGODashboardState extends State<NGODashboard>
     with SingleTickerProviderStateMixin {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String userName = "Loading...";
   String userEmail = "";
   String userRole = "NGO";
@@ -295,11 +298,15 @@ class _NGODashboardState extends State<NGODashboard>
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFFE65100);
+    final isDark = ThemeService().isDark(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F5),
+      key: _scaffoldKey,
+      drawer: const AppNavigationDrawer(currentRoute: 'dashboard'),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFFF8F5),
       body: SafeArea(
         child: Column(
           children: [
@@ -358,11 +365,6 @@ class _NGODashboardState extends State<NGODashboard>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          userEmail,
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
@@ -401,9 +403,10 @@ class _NGODashboardState extends State<NGODashboard>
                               : null,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.logout, color: Colors.white),
-                        onPressed: () => logout(context),
+                        icon: const Icon(Icons.menu, color: Colors.white),
+                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                       ),
                     ],
                   )
@@ -506,6 +509,11 @@ class _NGODashboardState extends State<NGODashboard>
       );
     }
 
+    final isDark = ThemeService().isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
+
     return ListView.builder(
       itemCount: docs.length,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -523,6 +531,7 @@ class _NGODashboardState extends State<NGODashboard>
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 0,
+          color: cardBg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(color: Colors.orange.withOpacity(0.15), width: 1.2),
@@ -537,7 +546,7 @@ class _NGODashboardState extends State<NGODashboard>
                   children: [
                     Text(
                       "$clothes (Qty: $qty)",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
                     ),
                     _buildStatusPill(status),
                   ],
@@ -545,12 +554,12 @@ class _NGODashboardState extends State<NGODashboard>
                 const SizedBox(height: 10),
                 Text(
                   "Donor: $donor",
-                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 13.5),
+                  style: TextStyle(color: textPrimary, fontWeight: FontWeight.w500, fontSize: 13.5),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   "Address: $location",
-                  style: const TextStyle(color: Colors.black54, fontSize: 12.5),
+                  style: TextStyle(color: textSecondary, fontSize: 12.5),
                 ),
 
                 // Render Donation photo if available
@@ -590,7 +599,7 @@ class _NGODashboardState extends State<NGODashboard>
                       const SizedBox(width: 4),
                       Text(
                         "Volunteer: ${data['volunteerName']}",
-                        style: const TextStyle(color: Colors.black54, fontSize: 12.5),
+                        style: TextStyle(color: textSecondary, fontSize: 12.5),
                       ),
                     ],
                   ),
@@ -651,7 +660,7 @@ class _NGODashboardState extends State<NGODashboard>
                               : status == 'Accepted by Volunteer'
                                   ? "Volunteer accepted. Awaiting pickup..."
                                   : "Garments are in transit...",
-                          style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.black45),
+                          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: textSecondary),
                         )
                       ]
                     ],

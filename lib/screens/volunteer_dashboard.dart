@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'package:echo_thread/widgets/navigation_drawer.dart';
+import 'package:echo_thread/services/theme_service.dart';
 
 class VolunteerDashboard extends StatefulWidget {
   const VolunteerDashboard({super.key});
@@ -13,6 +15,7 @@ class VolunteerDashboard extends StatefulWidget {
 
 class _VolunteerDashboardState extends State<VolunteerDashboard>
     with SingleTickerProviderStateMixin {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String userName = "Loading...";
   String userEmail = "";
   String userRole = "Volunteer";
@@ -116,9 +119,15 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFF1565C0);
     final user = FirebaseAuth.instance.currentUser;
+    final isDark = ThemeService().isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      key: _scaffoldKey,
+      drawer: const AppNavigationDrawer(currentRoute: 'dashboard'),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF0F4F8),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -179,11 +188,6 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            userEmail,
-                            style: const TextStyle(color: Colors.white70, fontSize: 13),
-                          ),
                           const SizedBox(height: 6),
                           Text(
                             "Welcome Back, $userName!",
@@ -212,9 +216,10 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                 : null,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.logout, color: Colors.white),
-                          onPressed: () => logout(context),
+                          icon: const Icon(Icons.menu, color: Colors.white),
+                          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                         ),
                       ],
                     )
@@ -224,15 +229,15 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
 
               const SizedBox(height: 20),
 
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
                   children: [
-                    Icon(Icons.assignment_outlined, color: Colors.black54),
-                    SizedBox(width: 8),
+                    Icon(Icons.assignment_outlined, color: isDark ? Colors.white70 : Colors.black54),
+                    const SizedBox(width: 8),
                     Text(
                       "Your Tasks",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
                     ),
                   ],
                 ),
@@ -321,6 +326,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                         return Card(
                           margin: const EdgeInsets.only(bottom: 14),
                           elevation: 0,
+                          color: cardBg,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(color: Colors.blue.withOpacity(0.15), width: 1.2),
@@ -335,7 +341,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                   children: [
                                     Text(
                                       "$clothes (Qty: $qty)",
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
                                     ),
                                     _buildStatusPill(status),
                                   ],
@@ -358,11 +364,11 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                       children: [
                                         Text(
                                           "Donor Details: $donor",
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
                                         ),
                                         const SizedBox(height: 4),
-                                        Text("📞 Phone: $dPhone", style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
-                                        Text("✉️ Email: $dEmail", style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
+                                        Text("📞 Phone: $dPhone", style: TextStyle(fontSize: 12.5, color: textSecondary)),
+                                        Text("✉️ Email: $dEmail", style: TextStyle(fontSize: 12.5, color: textSecondary)),
                                       ],
                                     );
                                   },
@@ -370,12 +376,12 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                 const SizedBox(height: 10),
                                 Text(
                                   "Pickup Address: $address",
-                                  style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
+                                  style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   "Assigned Date: $assignedDate",
-                                  style: const TextStyle(color: Colors.black54, fontSize: 12.5),
+                                  style: TextStyle(color: textSecondary, fontSize: 12.5),
                                 ),
 
                                 // Display Photo if available

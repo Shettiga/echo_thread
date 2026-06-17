@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:echo_thread/services/cloudinary_service.dart';
+import 'package:echo_thread/services/theme_service.dart';
+import 'package:echo_thread/screens/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -300,17 +302,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ThemeService().isDark(context);
     final themeColor = _getRoleColor(role);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF4F6F8),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: themeColor),
+        iconTheme: IconThemeData(color: isDark ? Colors.white70 : themeColor),
         title: Text(
           "My Profile",
-          style: TextStyle(color: themeColor, fontWeight: FontWeight.w800),
+          style: TextStyle(color: isDark ? Colors.white : themeColor, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
       ),
@@ -376,7 +382,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   Text(
                     name,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textPrimary),
                   ),
                   const SizedBox(height: 6),
                   Container(
@@ -399,7 +405,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cardBg,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
@@ -412,46 +418,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Edit Account Details",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary),
                           ),
                           const Divider(height: 24),
                           TextFormField(
                             controller: nameController,
-                            style: const TextStyle(color: Colors.black87),
+                            style: TextStyle(color: textPrimary),
                             decoration: InputDecoration(
                               labelText: "Name",
-                              labelStyle: const TextStyle(color: Colors.black54),
+                              labelStyle: TextStyle(color: textSecondary),
                               prefixIcon: Icon(Icons.person_outline, color: themeColor),
                               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColor, width: 1.5)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.black12)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.black12)),
                             ),
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: phoneController,
-                            style: const TextStyle(color: Colors.black87),
+                            style: TextStyle(color: textPrimary),
                             keyboardType: TextInputType.phone,
                             decoration: InputDecoration(
                               labelText: "Phone Number",
-                              labelStyle: const TextStyle(color: Colors.black54),
+                              labelStyle: TextStyle(color: textSecondary),
                               prefixIcon: Icon(Icons.phone_outlined, color: themeColor),
                               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColor, width: 1.5)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.black12)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.black12)),
                             ),
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: emailController,
-                            style: const TextStyle(color: Colors.black87),
+                            style: TextStyle(color: textPrimary),
                             keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
                               labelText: "Email",
-                              labelStyle: const TextStyle(color: Colors.black54),
+                              labelStyle: TextStyle(color: textSecondary),
                               prefixIcon: Icon(Icons.email_outlined, color: themeColor),
                               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColor, width: 1.5)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.black12)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.black12)),
                             ),
                           ),
                         ],
@@ -507,7 +513,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cardBg,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
@@ -520,16 +526,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Account Details",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary),
                           ),
                           const Divider(height: 24),
-                          _buildDetailRow("Email", email, Icons.email_outlined, themeColor),
+                          _buildDetailRow(context, "Email", email, Icons.email_outlined, themeColor),
                           const SizedBox(height: 14),
-                          _buildDetailRow("Phone", phone.isNotEmpty ? phone : "Not Added", Icons.phone_outlined, themeColor),
+                          _buildDetailRow(context, "Phone", phone.isNotEmpty ? phone : "Not Added", Icons.phone_outlined, themeColor),
                           const SizedBox(height: 14),
-                          _buildDetailRow("Access Level", role, Icons.shield_outlined, themeColor),
+                          _buildDetailRow(context, "Access Level", role, Icons.shield_outlined, themeColor),
                         ],
                       ),
                     ),
@@ -560,7 +566,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
@@ -573,29 +579,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           "Performance Stats",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary),
                         ),
                         const Divider(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildStatColumn(_getStatTitle1(role), totalItems.toString(), themeColor),
-                            Container(width: 1, height: 40, color: Colors.grey.shade200),
-                            _buildStatColumn(_getStatTitle2(role), completedCount.toString(), themeColor),
+                            _buildStatColumn(context, _getStatTitle1(role), totalItems.toString(), themeColor),
+                            Container(width: 1, height: 40, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+                            _buildStatColumn(context, _getStatTitle2(role), completedCount.toString(), themeColor),
                           ],
                         ),
                       ],
                     ),
                   ),
+
+                  const SizedBox(height: 24),
+
+                  // 🔴 LOGOUT BUTTON
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (mounted) {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.logout, color: Colors.redAccent),
+                      label: const Text(
+                        "Logout from Account",
+                        style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, IconData icon, Color iconColor) {
+  Widget _buildDetailRow(BuildContext context, String label, String value, IconData icon, Color iconColor) {
+    final isDark = ThemeService().isDark(context);
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black45;
+
     return Row(
       children: [
         Icon(icon, color: iconColor, size: 22),
@@ -603,21 +643,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black45)),
+            Text(label, style: TextStyle(fontSize: 12, color: textSecondary)),
             const SizedBox(height: 3),
-            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87)),
+            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textPrimary)),
           ],
         )
       ],
     );
   }
 
-  Widget _buildStatColumn(String label, String value, Color color) {
+  Widget _buildStatColumn(BuildContext context, String label, String value, Color color) {
+    final isDark = ThemeService().isDark(context);
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
+
     return Column(
       children: [
         Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500)),
+        Text(label, style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w500)),
       ],
     );
   }

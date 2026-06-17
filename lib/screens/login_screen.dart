@@ -8,6 +8,9 @@ import 'register_screen.dart';
 import 'donor_dashboard.dart';
 import 'ngo_dashboard.dart';
 import 'volunteer_dashboard.dart';
+import 'forgot_password_screen.dart';
+import 'package:echo_thread/services/notification_service.dart';
+import 'package:echo_thread/services/theme_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,15 +46,74 @@ class _LoginScreenState extends State<LoginScreen>
   bool _passwordFocused = false;
   bool _isLoading = false;
 
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),
+            )
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> loginUser() async {
+    final emailText = emailController.text.trim();
+    final passwordText = passwordController.text.trim();
+
+    // 1. Validation for empty fields
+    if (emailText.isEmpty || passwordText.isEmpty) {
+      _showErrorDialog("Validation Error", "All fields are required. Please enter both your email address and password.");
+      return;
+    }
+
+    // 2. Email format validation
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(emailText)) {
+      _showErrorDialog("Invalid Email Address", "The email format you entered is incorrect. Please verify and try again.");
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
+      // 3. Check if account exists in Firestore
+      final userQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: emailText)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
+        _showErrorDialog(
+          "Account Not Found",
+          "Account not found. Please register first.",
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 4. Attempt login
       final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+        email: emailText,
+        password: passwordText,
       );
 
       final uid = userCred.user!.uid;
@@ -62,12 +124,27 @@ class _LoginScreenState extends State<LoginScreen>
           .get();
 
       if (!userData.exists) {
-        throw Exception('User profile not found.');
+        throw Exception('User profile not found in database.');
       }
 
       final data = userData.data();
       final role = data?['role'];
       final uName = data?['name'] ?? 'User';
+
+      // 5. Send Real Login Notifications (Email & SMS)
+      NotificationService.sendEmail(
+        email: emailText,
+        name: uName,
+        activity: 'Login Activity Notification',
+        dateTime: DateTime.now(),
+      );
+
+      NotificationService.sendSMS(
+        phone: data?['phone'] ?? '',
+        name: uName,
+        activity: 'Login Activity',
+        dateTime: DateTime.now(),
+      );
 
       if (!mounted) return;
 
@@ -100,15 +177,20 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         );
       }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      _shakeController.forward(from: 0.0);
+      
+      // Explicit Firebase credential error messaging
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        _showErrorDialog("Invalid Password", "The password you entered is incorrect. Please try again.");
+      } else {
+        _showErrorDialog("Authentication Error", e.message ?? "An unexpected authentication error occurred.");
+      }
     } catch (e) {
       if (!mounted) return;
       _shakeController.forward(from: 0.0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showErrorDialog("Login Failed", e.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -351,12 +433,19 @@ class _LoginScreenState extends State<LoginScreen>
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: const [
-                      Color(0xFF123B26),
-                      Color(0xFF1D6B31),
-                      Color(0xFF57B65A),
-                      Color(0xFFB5E6B0),
-                    ],
+                    colors: ThemeService().isDark(context)
+                        ? const [
+                            Color(0xFF1E1E1E),
+                            Color(0xFF121212),
+                            Color(0xFF2E3B2E),
+                            Color(0xFF1F2F23),
+                          ]
+                        : const [
+                            Color(0xFF123B26),
+                            Color(0xFF1D6B31),
+                            Color(0xFF57B65A),
+                            Color(0xFFB5E6B0),
+                          ],
                     begin: Alignment(-1.0 + (gradientShift * 0.12), -1.0),
                     end: Alignment(1.0, 1.0 - (gradientShift * 0.12)),
                   ),
@@ -673,7 +762,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                     Align(
                                                       alignment: Alignment.centerRight,
                                                       child: TextButton(
-                                                        onPressed: () {},
+                                                        onPressed: () {
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (_) => const ForgotPasswordScreen(),
+                                                            ),
+                                                          );
+                                                        },
                                                         child: const Text(
                                                           'Forgot Password?',
                                                           style: TextStyle(color: Colors.white),

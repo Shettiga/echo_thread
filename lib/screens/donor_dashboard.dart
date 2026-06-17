@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'package:echo_thread/widgets/navigation_drawer.dart';
+import 'package:echo_thread/services/theme_service.dart';
 
 class DonorDashboard extends StatefulWidget {
   const DonorDashboard({super.key});
@@ -15,6 +17,7 @@ class DonorDashboard extends StatefulWidget {
 
 class _DonorDashboardState extends State<DonorDashboard>
     with SingleTickerProviderStateMixin {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String userName = "Loading...";
   String userEmail = "";
   String userRole = "Donor";
@@ -71,12 +74,18 @@ class _DonorDashboardState extends State<DonorDashboard>
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFF2E7D32);
     final user = FirebaseAuth.instance.currentUser;
+    final isDark = ThemeService().isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F5),
+      key: _scaffoldKey,
+      drawer: const AppNavigationDrawer(currentRoute: 'dashboard'),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF4F7F5),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -143,11 +152,6 @@ class _DonorDashboardState extends State<DonorDashboard>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            userEmail,
-                            style: const TextStyle(color: Colors.white70, fontSize: 13),
-                          ),
                           const SizedBox(height: 6),
                           const Text(
                             "Ready to make an impact today?",
@@ -179,8 +183,8 @@ class _DonorDashboardState extends State<DonorDashboard>
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.logout, color: Colors.white),
-                          onPressed: () => logout(context),
+                          icon: const Icon(Icons.menu, color: Colors.white),
+                          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                         ),
                       ],
                     )
@@ -196,7 +200,7 @@ class _DonorDashboardState extends State<DonorDashboard>
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
@@ -261,14 +265,14 @@ class _DonorDashboardState extends State<DonorDashboard>
 
               const SizedBox(height: 28),
 
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
                   "Quick Actions",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    color: textPrimary,
                   ),
                 ),
               ),
@@ -340,6 +344,11 @@ class _DonorDashboardState extends State<DonorDashboard>
     Color bgTint,
     Color accentColor,
   ) {
+    final isDark = ThemeService().isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black45;
+
     return GestureDetector(
       onTap: () async {
         await Navigator.push(
@@ -351,7 +360,7 @@ class _DonorDashboardState extends State<DonorDashboard>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -376,10 +385,10 @@ class _DonorDashboardState extends State<DonorDashboard>
             const SizedBox(height: 14),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: textPrimary,
               ),
             ),
             const SizedBox(height: 4),
@@ -387,9 +396,9 @@ class _DonorDashboardState extends State<DonorDashboard>
               description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: Colors.black45,
+                color: textSecondary,
               ),
             ),
           ],
@@ -414,6 +423,7 @@ class ImpactItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ThemeService().isDark(context);
     return Column(
       children: [
         Icon(icon, color: const Color(0xFF2E7D32), size: 24),
@@ -430,7 +440,7 @@ class ImpactItem extends StatelessWidget {
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black54, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -445,16 +455,19 @@ class SustainabilityReportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFF2E7D32);
     final user = FirebaseAuth.instance.currentUser;
+    final isDark = ThemeService().isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF4F7F5),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: themeColor),
+        iconTheme: IconThemeData(color: isDark ? Colors.white70 : themeColor),
         title: Text(
           "Impact Report",
-          style: TextStyle(color: themeColor, fontWeight: FontWeight.bold),
+          style: TextStyle(color: isDark ? Colors.white : themeColor, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -466,7 +479,7 @@ class SustainabilityReportScreen extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             debugPrint("[SUSTAINABILITY_REPORT_STREAM_ERROR] Error: ${snapshot.error}");
-            return Center(child: Text("Error: ${snapshot.error}"));
+            return Center(child: Text("Error: ${snapshot.error}", style: TextStyle(color: textPrimary)));
           }
           if (snapshot.hasData) {
             debugPrint("[SUSTAINABILITY_REPORT_STREAM_DATA] Received docs count: ${snapshot.data!.docs.length}");
@@ -529,10 +542,10 @@ class SustainabilityReportScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Center(
+                Center(
                   child: Text(
                     "Your Dynamic Fashion Impact",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textPrimary),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -541,26 +554,26 @@ class SustainabilityReportScreen extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildStatCard("Donations Made", totalDonations.toString(), Icons.volunteer_activism, themeColor),
+                      child: _buildStatCard(context, "Donations Made", totalDonations.toString(), Icons.volunteer_activism, themeColor),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildStatCard("Clothes Donated", totalClothes.toString(), Icons.checkroom, themeColor),
+                      child: _buildStatCard(context, "Clothes Donated", totalClothes.toString(), Icons.checkroom, themeColor),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
 
                 // Status Summary
-                const Text(
+                Text(
                   "Donation Status Summary",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
                 ),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
@@ -568,26 +581,26 @@ class SustainabilityReportScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      _buildStatusRow("Pending Review", pending, Colors.orange),
-                      _buildStatusRow("Accepted by NGO", accepted, Colors.blue),
-                      _buildStatusRow("Assigned to Volunteer", assigned, Colors.indigo),
-                      _buildStatusRow("In Transit (Picked Up)", pickedUp, Colors.purple),
-                      _buildStatusRow("Delivered to NGO", delivered, Colors.green),
-                      _buildStatusRow("Distributed to Needy", distributed, Colors.teal),
+                      _buildStatusRow(context, "Pending Review", pending, Colors.orange),
+                      _buildStatusRow(context, "Accepted by NGO", accepted, Colors.blue),
+                      _buildStatusRow(context, "Assigned to Volunteer", assigned, Colors.indigo),
+                      _buildStatusRow(context, "In Transit (Picked Up)", pickedUp, Colors.purple),
+                      _buildStatusRow(context, "Delivered to NGO", delivered, Colors.green),
+                      _buildStatusRow(context, "Distributed to Needy", distributed, Colors.teal),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Environmental Impact section
-                const Text(
+                Text(
                   "Estimated Environmental Impact",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
                 ),
                 const SizedBox(height: 12),
-                _buildImpactMetric("CO₂ Saved", "${co2Saved.toStringAsFixed(1)} kg", "Avoided carbon footprint from new textile production.", themeColor),
-                _buildImpactMetric("Water Saved", "${waterSaved.toStringAsFixed(0)} Liters", "Saved water by reusing textiles instead of manufacturing new ones.", themeColor),
-                _buildImpactMetric("Landfill Prevented", "${landfillSaved.toStringAsFixed(1)} kg", "Amount of waste directly diverted from open landfills.", themeColor),
+                _buildImpactMetric(context, "CO₂ Saved", "${co2Saved.toStringAsFixed(1)} kg", "Avoided carbon footprint from new textile production.", themeColor),
+                _buildImpactMetric(context, "Water Saved", "${waterSaved.toStringAsFixed(0)} Liters", "Saved water by reusing textiles instead of manufacturing new ones.", themeColor),
+                _buildImpactMetric(context, "Landfill Prevented", "${landfillSaved.toStringAsFixed(1)} kg", "Amount of waste directly diverted from open landfills.", themeColor),
 
                 const SizedBox(height: 20),
               ],
@@ -598,11 +611,15 @@ class SustainabilityReportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String title, String val, IconData icon, Color color) {
+  Widget _buildStatCard(BuildContext context, String title, String val, IconData icon, Color color) {
+    final isDark = ThemeService().isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.15)),
         boxShadow: [
@@ -615,13 +632,16 @@ class SustainabilityReportScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(val, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
           const SizedBox(height: 4),
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500)),
+          Text(title, style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _buildStatusRow(String title, int count, Color color) {
+  Widget _buildStatusRow(BuildContext context, String title, int count, Color color) {
+    final isDark = ThemeService().isDark(context);
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -635,7 +655,7 @@ class SustainabilityReportScreen extends StatelessWidget {
                 decoration: BoxDecoration(shape: BoxShape.circle, color: color),
               ),
               const SizedBox(width: 10),
-              Text(title, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+              Text(title, style: TextStyle(fontSize: 13, color: textPrimary)),
             ],
           ),
           Text(
@@ -647,12 +667,17 @@ class SustainabilityReportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildImpactMetric(String label, String value, String desc, Color color) {
+  Widget _buildImpactMetric(BuildContext context, String label, String value, String desc, Color color) {
+    final isDark = ThemeService().isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
@@ -669,12 +694,12 @@ class SustainabilityReportScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                    Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary)),
                     Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: color)),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(desc, style: const TextStyle(color: Colors.black54, fontSize: 11)),
+                Text(desc, style: TextStyle(color: textSecondary, fontSize: 11)),
               ],
             ),
           ),

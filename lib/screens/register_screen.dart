@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:echo_thread/services/notification_service.dart';
+import 'package:echo_thread/services/theme_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -35,138 +37,50 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   bool _isLoading = false;
 
-  Future<void> _showSimulatedNotificationDialog(
-      BuildContext context, String name, String email, String phone) async {
-    return showDialog(
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.notifications_active,
-                  color: Colors.green,
-                  size: 54,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "System Notification",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "A confirmation notification has been simulated and sent to your email & phone number:",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 20),
-                // Simulated SMS
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.sms, color: Colors.blue, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            "SMS to $phone",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 16),
-                      Text(
-                        "Welcome to EchoThread, $name! Your account has been created successfully. 🎉 Let's start donating!",
-                        style: const TextStyle(fontSize: 12.5, color: Colors.black87),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Simulated Email
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.email, color: Colors.redAccent, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Email to $email",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 16),
-                      Text(
-                        "Subject: Account Created Successfully 🎉\n\nDear $name,\n\nYour EchoThread account ($selectedRole) has been created successfully. You can now log in and access your personalized dashboard.\n\nBest Regards,\nEchoThread Team",
-                        style: const TextStyle(fontSize: 12, color: Colors.black87),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      Navigator.pop(context); // Close register screen (returns to login)
-                    },
-                    child: const Text(
-                      "Continue to Login Screen",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                )
-              ],
-            ),
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
           ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),
+            )
+          ],
         );
       },
     );
   }
 
   Future<void> registerUser() async {
-    if (nameController.text.isEmpty ||
-        emailController.text.isEmpty ||
-        phoneController.text.isEmpty ||
-        passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
-      );
+    final String regName = nameController.text.trim();
+    final String regEmail = emailController.text.trim();
+    final String regPhone = phoneController.text.trim();
+    final String regPassword = passwordController.text.trim();
+
+    if (regName.isEmpty || regEmail.isEmpty || regPhone.isEmpty || regPassword.isEmpty) {
+      _showErrorDialog("Validation Error", "All fields are required. Please fill in all fields.");
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(regEmail)) {
+      _showErrorDialog("Invalid Email Address", "The email format you entered is incorrect. Please verify and try again.");
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      _showErrorDialog("Weak Password", "Password must be at least 6 characters long.");
       return;
     }
 
@@ -178,14 +92,11 @@ class _RegisterScreenState extends State<RegisterScreen>
     try {
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+        email: regEmail,
+        password: regPassword,
       );
 
       currentUid = credential.user!.uid;
-      final String regName = nameController.text.trim();
-      final String regEmail = emailController.text.trim();
-      final String regPhone = phoneController.text.trim();
 
       debugPrint("[FIRESTORE_WRITE_START] UID: $currentUid, Collection: users, DocID: $currentUid");
       await FirebaseFirestore.instance
@@ -201,50 +112,76 @@ class _RegisterScreenState extends State<RegisterScreen>
       }).timeout(const Duration(seconds: 10));
       debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $currentUid, Collection: users, DocID: $currentUid, Response: User registered successfully");
 
-      // Sign out since createUserWithEmailAndPassword logs in the user automatically,
-      // and we want them to log in via the Login Screen.
+      // Sign out since createUserWithEmailAndPassword logs in the user automatically
       await FirebaseAuth.instance.signOut();
+
+      // Trigger Email & SMS Notifications asynchronously
+      NotificationService.sendEmail(
+        email: regEmail,
+        name: regName,
+        activity: 'Registration',
+        dateTime: DateTime.now(),
+      );
+
+      NotificationService.sendSMS(
+        phone: regPhone,
+        name: regName,
+        activity: 'Registration',
+        dateTime: DateTime.now(),
+      );
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registered Successfully 🎉'),
-          backgroundColor: Colors.green,
-        ),
+      // Show beautiful success dialog confirming real notification dispatch
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
+                const SizedBox(width: 10),
+                const Text("Account Created 🎉", style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text(
+              "Congratulations $regName!\n\nYour account has been created successfully.\n\n"
+              "We have dispatched a real confirmation email to $regEmail and an SMS to $regPhone. Please check your inbox and continue to log in."
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(context); // Close register screen
+                },
+                child: const Text("Continue to Login", style: TextStyle(fontWeight: FontWeight.bold)),
+              )
+            ],
+          );
+        },
       );
-
-      // Show simulated SMS / Email notification dialog to satisfy the requirement
-      await _showSimulatedNotificationDialog(context, regName, regEmail, regPhone);
 
     } on FirebaseAuthException catch (e) {
       debugPrint("Firebase Auth Exception during registration: Code: ${e.code}, Message: ${e.message}");
       if (!mounted) return;
       String message = 'Registration Failed';
-      if (e.code == 'email-already-in-use') message = 'Email already exists';
-      if (e.code == 'weak-password') message = 'Weak password';
+      if (e.code == 'email-already-in-use') message = 'This email is already in use by another account.';
+      if (e.code == 'weak-password') message = 'The password is too weak.';
       _shakeController.forward(from: 0.0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      _showErrorDialog("Registration Error", message);
     } on FirebaseException catch (e) {
       debugPrint("[FIRESTORE_WRITE_ERROR] UID: $currentUid, Collection: users, DocID: $currentUid, Exception: ${e.code} - ${e.message}");
       if (!mounted) return;
       _shakeController.forward(from: 0.0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Firebase Error: ${e.message}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showErrorDialog("Firebase Error", e.message ?? "Failed to save user profile.");
     } catch (e) {
       debugPrint("Unknown exception during registration: $e");
       if (!mounted) return;
       _shakeController.forward(from: 0.0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _showErrorDialog("Error", e.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -455,12 +392,19 @@ class _RegisterScreenState extends State<RegisterScreen>
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: const [
-                      Color(0xFF123B26),
-                      Color(0xFF1D6B31),
-                      Color(0xFF57B65A),
-                      Color(0xFFB5E6B0),
-                    ],
+                    colors: ThemeService().isDark(context)
+                        ? const [
+                            Color(0xFF1E1E1E),
+                            Color(0xFF121212),
+                            Color(0xFF2E3B2E),
+                            Color(0xFF1F2F23),
+                          ]
+                        : const [
+                            Color(0xFF123B26),
+                            Color(0xFF1D6B31),
+                            Color(0xFF57B65A),
+                            Color(0xFFB5E6B0),
+                          ],
                     begin: Alignment(-1.0 + (gradientShift * 0.12), -1.0),
                     end: Alignment(1.0, 1.0 - (gradientShift * 0.12)),
                   ),
