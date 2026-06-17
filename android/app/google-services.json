@@ -1,14 +1,13 @@
 {
   "project_info": {
-    "project_number": "532774111499",
-    "firebase_url": "https://auth-form-2eb89-default-rtdb.firebaseio.com",
-    "project_id": "auth-form-2eb89",
-    "storage_bucket": "auth-form-2eb89.appspot.com"
+    "project_number": "504964174749",
+    "project_id": "echothread-6729a",
+    "storage_bucket": "echothread-6729a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:532774111499:android:c73a302e4baaff5527ba0e",
+        "mobilesdk_app_id": "1:504964174749:android:b57d887f19af4165c81574",
         "android_client_info": {
           "package_name": "com.example.echo_thread"
         }
@@ -16,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDvxVlVzZUUf_MBZhx4rJgtwgd27KPUouc"
+          "current_key": "AIzaSyAT38WqWxrnyboiFEU94-aEGw_fLlVdTkI"
         }
       ],
       "services": {
