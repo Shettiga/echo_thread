@@ -19,6 +19,7 @@ class _NGODashboardState extends State<NGODashboard>
   String userName = "Loading...";
   String userEmail = "";
   String userRole = "NGO";
+  String userStatus = "Loading";
   String? profileImage;
   late final TabController _tabController;
 
@@ -48,6 +49,7 @@ class _NGODashboardState extends State<NGODashboard>
           userName = data.data()?['name'] ?? "NGO Portal";
           userEmail = data.data()?['email'] ?? user.email ?? "";
           userRole = data.data()?['role'] ?? "NGO";
+          userStatus = data.data()?['status'] ?? "Approved"; // default to Approved for compatibility
           profileImage = data.data()?['profileImage'];
         });
       }
@@ -302,6 +304,67 @@ class _NGODashboardState extends State<NGODashboard>
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFFE65100);
     final isDark = ThemeService().isDark(context);
+
+    if (userStatus == "Loading") {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFE65100)),
+        ),
+      );
+    }
+
+    if (userStatus.toLowerCase() == "pending" || userStatus.toLowerCase() == "rejected") {
+      return Scaffold(
+        backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFFF8F5),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: (userStatus.toLowerCase() == "pending" ? Colors.orange : Colors.red).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    userStatus.toLowerCase() == "pending" ? Icons.hourglass_empty : Icons.gpp_bad,
+                    size: 64,
+                    color: userStatus.toLowerCase() == "pending" ? Colors.orange : Colors.red,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  userStatus.toLowerCase() == "pending" 
+                      ? "Account Pending Verification"
+                      : "Account Rejected",
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  userStatus.toLowerCase() == "pending"
+                      ? "Your NGO profile is currently under review by EchoThread system administrators. We will notify you once your status is updated."
+                      : "Your NGO request has been declined. Please contact support if you believe this is an error.",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey, height: 1.4),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
+                    onPressed: () => logout(context),
+                    child: const Text("Log Out", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       key: _scaffoldKey,

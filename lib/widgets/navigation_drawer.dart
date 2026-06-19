@@ -6,6 +6,10 @@ import 'package:echo_thread/screens/profile_screen.dart';
 import 'package:echo_thread/screens/settings_screen.dart';
 import 'package:echo_thread/screens/help_screen.dart';
 import 'package:echo_thread/screens/about_screen.dart';
+import 'package:echo_thread/screens/admin_dashboard.dart';
+import 'package:echo_thread/screens/donor_dashboard.dart';
+import 'package:echo_thread/screens/ngo_dashboard.dart';
+import 'package:echo_thread/screens/volunteer_dashboard.dart';
 import 'package:echo_thread/services/theme_service.dart';
 
 class AppNavigationDrawer extends StatefulWidget {
@@ -83,13 +87,15 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   }
 
   Color _getRoleColor(String role) {
-    switch (role) {
-      case 'NGO':
-        return const Color(0xFFE65100);
-      case 'Volunteer':
-        return const Color(0xFF1565C0);
-      default:
-        return const Color(0xFF2E7D32);
+    final r = role.toLowerCase();
+    if (r == 'ngo') {
+      return const Color(0xFFE65100);
+    } else if (r == 'volunteer') {
+      return const Color(0xFF1565C0);
+    } else if (r == 'admin') {
+      return const Color(0xFF673AB7);
+    } else {
+      return const Color(0xFF2E7D32);
     }
   }
 
@@ -178,7 +184,22 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                   onTap: () {
                     Navigator.pop(context);
                     if (widget.currentRoute != "dashboard") {
-                      // Navigate back to dashboard root (just popping back is usually appropriate)
+                      final r = userRole.toLowerCase();
+                      Widget targetDashboard;
+                      if (r == 'admin') {
+                        targetDashboard = const AdminDashboard();
+                      } else if (r == 'ngo') {
+                        targetDashboard = const NGODashboard();
+                      } else if (r == 'volunteer') {
+                        targetDashboard = const VolunteerDashboard();
+                      } else {
+                        targetDashboard = const DonorDashboard();
+                      }
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => targetDashboard),
+                        (route) => false,
+                      );
                     }
                   },
                 ),

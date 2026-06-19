@@ -8,6 +8,7 @@ import 'register_screen.dart';
 import 'donor_dashboard.dart';
 import 'ngo_dashboard.dart';
 import 'volunteer_dashboard.dart';
+import 'admin_dashboard.dart';
 import 'forgot_password_screen.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/services/theme_service.dart';
@@ -155,14 +156,22 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       );
 
-      if (role == 'Donor') {
+      final String roleLower = (role ?? '').toString().toLowerCase();
+      if (roleLower == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AdminDashboard(),
+          ),
+        );
+      } else if (roleLower == 'donor') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => const DonorDashboard(),
           ),
         );
-      } else if (role == 'NGO') {
+      } else if (roleLower == 'ngo') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for auth check and role detection
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (getUserData().role.lower() == 'admin');
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 1. Users collection rules
+    match /users/{userId} {
+      allow read, write: if isAdmin() || isOwner(userId);
+    }
+
+    // 2. Donations collection rules
+    match /donations/{donationId} {
+      allow read, write: if isAdmin();
+      
+      // Donors can read and create their own donations
+      allow read: if isSignedIn() && (resource.data.donorId == request.auth.uid);
+      allow create: if isSignedIn() && (request.resource.data.donorId == request.auth.uid);
+      
+      // Volunteers can read and update donations assigned to them
+      allow read, update: if isSignedIn() && (
+        resource.data.volunteerId == request.auth.uid ||
+        request.resource.data.volunteerId == request.auth.uid
+      );
+      
+      // NGOs can read and update donations
+      allow read, update: if isSignedIn() && getUserData().role.lower() == 'ngo';
+    }
+
+    // 3. Feedback collection rules
+    match /feedbacks/{feedbackId} {
+      allow read, write: if isAdmin();
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid);
+    }
+    
+    match /feedback/{feedbackId} {
+      allow read, write: if isAdmin();
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid);
+    }
+
+    // 4. Support Tickets collection rules
+    match /support_requests/{ticketId} {
+      allow read, write: if isAdmin();
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid);
+    }
+    
+    match /support_tickets/{ticketId} {
+      allow read, write: if isAdmin();
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid);
+    }
+
+    // 5. Notifications collection rules
+    match /notifications/{notificationId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn();
+    }
+
+    // 6. NGO verifications collection rules
+    match /ngo_verifications/{verificationId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == verificationId);
+    }
+
+    // 7. Volunteer assignments collection rules
+    match /volunteer_assignments/{assignmentId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn() && (
+        resource.data.volunteerId == request.auth.uid
+      );
+    }
+  }
+}
