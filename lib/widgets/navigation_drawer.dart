@@ -11,6 +11,7 @@ import 'package:echo_thread/screens/donor_dashboard.dart';
 import 'package:echo_thread/screens/ngo_dashboard.dart';
 import 'package:echo_thread/screens/volunteer_dashboard.dart';
 import 'package:echo_thread/services/theme_service.dart';
+import 'package:echo_thread/services/app_localizations.dart';
 
 class AppNavigationDrawer extends StatefulWidget {
   final String currentRoute;
@@ -56,7 +57,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Logout"),
+        title: Text(context.translate('logout')),
         content: const Text("Are you sure you want to log out of EchoThread?"),
         actions: [
           TextButton(
@@ -79,7 +80,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 );
               }
             },
-            child: const Text("Logout"),
+            child: Text(context.translate('logout')),
           ),
         ],
       ),
@@ -179,7 +180,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
               children: [
                 _buildDrawerItem(
                   icon: Icons.dashboard_outlined,
-                  title: "Dashboard",
+                  title: context.translate('dashboard'),
                   routeName: "dashboard",
                   onTap: () {
                     Navigator.pop(context);
@@ -205,7 +206,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 ),
                 _buildDrawerItem(
                   icon: Icons.person_outline,
-                  title: "My Profile",
+                  title: context.translate('profile'),
                   routeName: "profile",
                   onTap: () {
                     Navigator.pop(context);
@@ -219,7 +220,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 ),
                 _buildDrawerItem(
                   icon: Icons.settings_outlined,
-                  title: "Settings",
+                  title: context.translate('settings'),
                   routeName: "settings",
                   onTap: () {
                     Navigator.pop(context);
@@ -233,7 +234,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 ),
                 _buildDrawerItem(
                   icon: Icons.help_outline,
-                  title: "Help & Support",
+                  title: context.translate('help'),
                   routeName: "help",
                   onTap: () {
                     Navigator.pop(context);
@@ -247,7 +248,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 ),
                 _buildDrawerItem(
                   icon: Icons.info_outline,
-                  title: "About EchoThread",
+                  title: context.translate('about'),
                   routeName: "about",
                   onTap: () {
                     Navigator.pop(context);
@@ -262,9 +263,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.redAccent),
-                  title: const Text(
-                    "Logout",
-                    style: TextStyle(
+                  title: Text(
+                    context.translate('logout'),
+                    style: const TextStyle(
                       color: Colors.redAccent,
                       fontWeight: FontWeight.bold,
                     ),

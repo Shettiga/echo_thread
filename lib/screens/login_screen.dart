@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
+import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -10,6 +13,8 @@ import 'ngo_dashboard.dart';
 import 'volunteer_dashboard.dart';
 import 'admin_dashboard.dart';
 import 'forgot_password_screen.dart';
+import 'otp_verification_screen.dart';
+import 'package:echo_thread/services/app_localizations.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/services/theme_service.dart';
 
@@ -131,8 +136,45 @@ class _LoginScreenState extends State<LoginScreen>
       final data = userData.data();
       final role = data?['role'];
       final uName = data?['name'] ?? 'User';
+      final phone = data?['phone'] ?? '';
 
-      // 5. Send Real Login Notifications (Email & SMS)
+      if (phone.toString().isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Warning: Profile has no phone number associated. Logging in directly.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        _navigateToDashboard(role);
+        return;
+      }
+
+      // Call secure sendSMSOTP Cloud Function to dispatch verification code
+      final projectId = Firebase.app().options.projectId;
+      final functionUrl = 'https://us-central1-$projectId.cloudfunctions.net/sendSMSOTP';
+      
+      debugPrint('[LOGIN] Requesting OTP from Cloud Function...');
+      final response = await http.post(
+        Uri.parse(functionUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'data': {
+            'phone': phone,
+          }
+        }),
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode != 200) {
+        throw Exception("Server returned status code ${response.statusCode}");
+      }
+
+      final responseData = jsonDecode(response.body);
+      if (responseData['result']?['success'] != true) {
+        throw Exception(responseData['result']?['error'] ?? "Failed to send verification SMS.");
+      }
+
+      // Send Real Login Notifications (Email & SMS)
       NotificationService.sendEmail(
         email: emailText,
         name: uName,
@@ -141,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       NotificationService.sendSMS(
-        phone: data?['phone'] ?? '',
+        phone: phone,
         name: uName,
         activity: 'Login Activity',
         dateTime: DateTime.now(),
@@ -150,42 +192,23 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Welcome Back, $uName'),
-          backgroundColor: Colors.green,
+        const SnackBar(
+          content: Text('SMS Verification Code Sent! Please verify to complete login.'),
+          backgroundColor: Colors.blue,
         ),
       );
 
-      final String roleLower = (role ?? '').toString().toLowerCase();
-      if (roleLower == 'admin') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const AdminDashboard(),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            email: emailText,
+            phone: phone,
+            userName: uName,
+            purpose: OtpPurpose.login,
           ),
-        );
-      } else if (roleLower == 'donor') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const DonorDashboard(),
-          ),
-        );
-      } else if (roleLower == 'ngo') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const NGODashboard(),
-          ),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const VolunteerDashboard(),
-          ),
-        );
-      }
+        ),
+      );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       _shakeController.forward(from: 0.0);
@@ -206,6 +229,39 @@ class _LoginScreenState extends State<LoginScreen>
           _isLoading = false;
         });
       }
+    }
+  }
+
+  void _navigateToDashboard(String? role) {
+    final String roleLower = (role ?? '').toString().toLowerCase();
+    if (roleLower == 'admin') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AdminDashboard(),
+        ),
+      );
+    } else if (roleLower == 'donor') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DonorDashboard(),
+        ),
+      );
+    } else if (roleLower == 'ngo') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const NGODashboard(),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const VolunteerDashboard(),
+        ),
+      );
     }
   }
 
@@ -613,9 +669,9 @@ class _LoginScreenState extends State<LoginScreen>
                                                 ),
                                               ),
                                               const SizedBox(height: 16),
-                                              const Text(
-                                                'Welcome Back!',
-                                                style: TextStyle(
+                                              Text(
+                                                context.translate('welcome'),
+                                                style: const TextStyle(
                                                   fontSize: 28,
                                                   fontWeight: FontWeight.w800,
                                                   color: Colors.white,
@@ -681,7 +737,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                         style: const TextStyle(color: Colors.white),
                                                         cursorColor: Colors.white,
                                                         decoration: InputDecoration(
-                                                          labelText: 'Email',
+                                                          labelText: context.translate('email'),
                                                           labelStyle: TextStyle(
                                                             color: Colors.white.withOpacity(0.78),
                                                           ),
@@ -731,7 +787,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                         style: const TextStyle(color: Colors.white),
                                                         cursorColor: Colors.white,
                                                         decoration: InputDecoration(
-                                                          labelText: 'Password',
+                                                          labelText: context.translate('password'),
                                                           labelStyle: TextStyle(
                                                             color: Colors.white.withOpacity(0.78),
                                                           ),
@@ -779,9 +835,9 @@ class _LoginScreenState extends State<LoginScreen>
                                                             ),
                                                           );
                                                         },
-                                                        child: const Text(
-                                                          'Forgot Password?',
-                                                          style: TextStyle(color: Colors.white),
+                                                        child: Text(
+                                                          context.translate('forgot_password'),
+                                                          style: const TextStyle(color: Colors.white),
                                                         ),
                                                       ),
                                                     ),
@@ -831,10 +887,10 @@ class _LoginScreenState extends State<LoginScreen>
                                                                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                                       ),
                                                                     )
-                                                                  : const Text(
-                                                                      'Login',
-                                                                      key: ValueKey('login_text'),
-                                                                      style: TextStyle(
+                                                                  : Text(
+                                                                      context.translate('login'),
+                                                                      key: const ValueKey('login_text'),
+                                                                      style: const TextStyle(
                                                                         color: Colors.white,
                                                                         fontSize: 16,
                                                                         fontWeight: FontWeight.w700,
@@ -850,7 +906,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                       mainAxisAlignment: MainAxisAlignment.center,
                                                       children: [
                                                         Text(
-                                                          'New to EchoThread? ',
+                                                          context.translate('dont_have_account') + ' ',
                                                           style: TextStyle(
                                                             color: Colors.white.withOpacity(0.84),
                                                           ),
@@ -864,9 +920,9 @@ class _LoginScreenState extends State<LoginScreen>
                                                               ),
                                                             );
                                                           },
-                                                          child: const Text(
-                                                            'Register',
-                                                            style: TextStyle(
+                                                          child: Text(
+                                                            context.translate('register'),
+                                                            style: const TextStyle(
                                                               color: Colors.white,
                                                               fontWeight: FontWeight.bold,
                                                               decoration: TextDecoration.underline,

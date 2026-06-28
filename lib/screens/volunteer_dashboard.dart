@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'volunteer_map_screen.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/services/theme_service.dart';
 
@@ -135,7 +136,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
             children: [
               // 🔹 HEADER
               Container(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [themeColor, const Color(0xFF42A5F5)],
@@ -155,74 +156,52 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                   ],
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                        );
+                        getUserName(); // Refresh details when returning from profile
+                      },
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        backgroundImage: profileImage != null && profileImage!.isNotEmpty
+                            ? NetworkImage(profileImage!)
+                            : null,
+                        child: profileImage == null || profileImage!.isEmpty
+                            ? const Icon(Icons.volunteer_activism_outlined, color: Colors.blue)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  "Hello, $userName 👋",
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.25),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  userRole,
-                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
+                          const Text(
+                            "Volunteer Dashboard",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 2),
                           Text(
-                            "Welcome Back, $userName!",
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            userRole,
+                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                            );
-                            getUserName(); // Refresh details when returning from profile
-                          },
-                          child: CircleAvatar(
-                            backgroundColor: Colors.white,
-                            backgroundImage: profileImage != null && profileImage!.isNotEmpty
-                                ? NetworkImage(profileImage!)
-                                : null,
-                            child: profileImage == null || profileImage!.isEmpty
-                                ? const Icon(Icons.volunteer_activism_outlined, color: Colors.blue)
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.menu, color: Colors.white),
-                          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                        ),
-                      ],
-                    )
                   ],
                 ),
               ),
@@ -427,7 +406,28 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                         icon: const Icon(Icons.thumb_up_alt_outlined, color: Colors.white, size: 16),
                                         label: const Text("Accept Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       )
-                                    else if (status == 'Accepted by Volunteer')
+                                    else if (status == 'Accepted by Volunteer') ...[
+                                      OutlinedButton.icon(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => VolunteerMapScreen(
+                                                donationId: taskId,
+                                                donorName: donor,
+                                                donorAddress: address,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          side: BorderSide(color: Colors.blue.shade700),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
+                                        label: Text("Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                                      ),
+                                      const SizedBox(width: 8),
                                       ElevatedButton.icon(
                                         onPressed: () => _updateTaskStatus(taskId, 'Picked Up'),
                                         style: ElevatedButton.styleFrom(
@@ -437,7 +437,28 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                         icon: const Icon(Icons.airport_shuttle_outlined, color: Colors.white, size: 16),
                                         label: const Text("Mark Pickup Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       )
-                                    else if (status == 'Picked Up')
+                                    ] else if (status == 'Picked Up') ...[
+                                      OutlinedButton.icon(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => VolunteerMapScreen(
+                                                donationId: taskId,
+                                                donorName: donor,
+                                                donorAddress: address,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          side: BorderSide(color: Colors.blue.shade700),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
+                                        label: Text("Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                                      ),
+                                      const SizedBox(width: 8),
                                       ElevatedButton.icon(
                                         onPressed: () => _updateTaskStatus(taskId, 'Delivered'),
                                         style: ElevatedButton.styleFrom(
@@ -447,7 +468,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                                         icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
                                         label: const Text("Mark Delivered", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       )
-                                    else
+                                    ] else
                                       const Row(
                                         children: [
                                           Icon(Icons.check_circle, color: Colors.green),

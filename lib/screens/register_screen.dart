@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
+import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/services/theme_service.dart';
+import 'package:echo_thread/services/app_localizations.dart';
+import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -88,80 +93,51 @@ class _RegisterScreenState extends State<RegisterScreen>
       _isLoading = true;
     });
 
-    String? currentUid;
     try {
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-        email: regEmail,
-        password: regPassword,
-      );
+      // Call secure sendSMSOTP Cloud Function to dispatch verification code
+      final projectId = Firebase.app().options.projectId;
+      final functionUrl = 'https://us-central1-$projectId.cloudfunctions.net/sendSMSOTP';
+      
+      debugPrint('[REGISTER] Requesting OTP from Cloud Function...');
+      final response = await http.post(
+        Uri.parse(functionUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'data': {
+            'phone': regPhone,
+          }
+        }),
+      ).timeout(const Duration(seconds: 12));
 
-      currentUid = credential.user!.uid;
+      if (response.statusCode != 200) {
+        throw Exception("Server returned status code ${response.statusCode}");
+      }
 
-      debugPrint("[FIRESTORE_WRITE_START] UID: $currentUid, Collection: users, DocID: $currentUid");
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUid)
-          .set({
-        'name': regName,
-        'email': regEmail,
-        'phone': regPhone,
-        'role': selectedRole,
-        'profileImage': '',
-        'createdAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 10));
-      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $currentUid, Collection: users, DocID: $currentUid, Response: User registered successfully");
-
-      // Sign out since createUserWithEmailAndPassword logs in the user automatically
-      await FirebaseAuth.instance.signOut();
-
-      // Trigger Email & SMS Notifications asynchronously
-      NotificationService.sendEmail(
-        email: regEmail,
-        name: regName,
-        activity: 'Registration',
-        dateTime: DateTime.now(),
-      );
-
-      NotificationService.sendSMS(
-        phone: regPhone,
-        name: regName,
-        activity: 'Registration',
-        dateTime: DateTime.now(),
-      );
+      final responseData = jsonDecode(response.body);
+      if (responseData['result']?['success'] != true) {
+        throw Exception(responseData['result']?['error'] ?? "Failed to send verification SMS.");
+      }
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();
 
-      // Show beautiful success dialog confirming real notification dispatch
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            title: Row(
-              children: [
-                const Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
-                const SizedBox(width: 10),
-                const Text("Account Created 🎉", style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            content: Text(
-              "Congratulations $regName!\n\nYour account has been created successfully.\n\n"
-              "We have dispatched a real confirmation email to $regEmail and an SMS to $regPhone. Please check your inbox and continue to log in."
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                  Navigator.pop(context); // Close register screen
-                },
-                child: const Text("Continue to Login", style: TextStyle(fontWeight: FontWeight.bold)),
-              )
-            ],
-          );
-        },
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("SMS Verification Code Sent!"), backgroundColor: Colors.blue),
+      );
+
+      // Navigate to OTP Verification Screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            email: regEmail,
+            phone: regPhone,
+            userName: regName,
+            purpose: OtpPurpose.register,
+            regPassword: regPassword,
+            regRole: selectedRole,
+          ),
+        ),
       );
 
     } on FirebaseAuthException catch (e) {
@@ -559,9 +535,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                 ),
                                               ),
                                               const SizedBox(height: 16),
-                                              const Text(
-                                                'Create Account',
-                                                style: TextStyle(
+                                              Text(
+                                                context.translate('register'),
+                                                style: const TextStyle(
                                                   fontSize: 28,
                                                   fontWeight: FontWeight.w800,
                                                   color: Colors.white,
@@ -597,7 +573,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                       style: const TextStyle(color: Colors.white),
                                                       cursorColor: Colors.white,
                                                       decoration: InputDecoration(
-                                                        labelText: 'Full Name',
+                                                        labelText: context.translate('name'),
                                                         labelStyle: TextStyle(color: Colors.white.withOpacity(0.78)),
                                                         prefixIcon: const Icon(Icons.person, color: Colors.white),
                                                         filled: true,
@@ -619,7 +595,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                       style: const TextStyle(color: Colors.white),
                                                       cursorColor: Colors.white,
                                                       decoration: InputDecoration(
-                                                        labelText: 'Email',
+                                                        labelText: context.translate('email'),
                                                         labelStyle: TextStyle(color: Colors.white.withOpacity(0.78)),
                                                         prefixIcon: const Icon(Icons.email_outlined, color: Colors.white),
                                                         filled: true,
@@ -641,7 +617,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                       style: const TextStyle(color: Colors.white),
                                                       cursorColor: Colors.white,
                                                       decoration: InputDecoration(
-                                                        labelText: 'Phone Number',
+                                                        labelText: context.translate('phone'),
                                                         labelStyle: TextStyle(color: Colors.white.withOpacity(0.78)),
                                                         prefixIcon: const Icon(Icons.phone_outlined, color: Colors.white),
                                                         filled: true,
@@ -663,7 +639,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                       style: const TextStyle(color: Colors.white),
                                                       cursorColor: Colors.white,
                                                       decoration: InputDecoration(
-                                                        labelText: 'Password',
+                                                        labelText: context.translate('password'),
                                                         labelStyle: TextStyle(color: Colors.white.withOpacity(0.78)),
                                                         prefixIcon: const Icon(Icons.lock_outline, color: Colors.white),
                                                         filled: true,
@@ -700,7 +676,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                         });
                                                       },
                                                       decoration: InputDecoration(
-                                                        labelText: 'Select Role',
+                                                        labelText: context.translate('role'),
                                                         labelStyle: TextStyle(color: Colors.white.withOpacity(0.78)),
                                                         filled: true,
                                                         fillColor: Colors.white.withOpacity(0.06),
@@ -730,7 +706,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                               duration: const Duration(milliseconds: 250),
                                                               child: _isLoading
                                                                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2.4, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-                                                                  : const Text('Create Account', key: ValueKey('register_text'), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                                                                  : Text(context.translate('register'), key: const ValueKey('register_text'), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                                                             ),
                                                           ),
                                                         ),

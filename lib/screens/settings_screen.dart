@@ -6,6 +6,8 @@ import 'package:echo_thread/screens/login_screen.dart';
 import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
+import 'package:echo_thread/services/language_service.dart';
+import 'package:echo_thread/services/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -353,92 +355,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeService = ThemeService();
+    final languageService = LanguageService();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settings"),
-      ),
-      drawer: const AppNavigationDrawer(currentRoute: "settings"),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "App Preferences",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 10),
-
-            // 🎨 Theme Selector Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.palette_outlined),
-                        SizedBox(width: 14),
-                        Text("Theme Mode", style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
-                      ],
-                    ),
-                    DropdownButton<ThemeMode>(
-                      value: themeService.themeMode,
-                      underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-                        DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
-                        DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
-                      ],
-                      onChanged: (mode) {
-                        if (mode != null) {
-                          themeService.setThemeMode(mode);
-                        }
-                      },
-                    ),
-                  ],
+    return ListenableBuilder(
+      listenable: Listenable.merge([themeService, languageService]),
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(context.translate('settings')),
+          ),
+          drawer: const AppNavigationDrawer(currentRoute: "settings"),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate('settings'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey),
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
-            // 🌐 Language Selection Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
+                // 🎨 Theme Selector Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.language_outlined),
-                        SizedBox(width: 14),
-                        Text("Language Selection", style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
+                        Row(
+                          children: [
+                            const Icon(Icons.palette_outlined),
+                            const SizedBox(width: 14),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(context.translate('theme_mode'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${context.translate('selected_theme')}:\n${themeService.themeMode.name[0].toUpperCase()}${themeService.themeMode.name.substring(1)}",
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        DropdownButton<ThemeMode>(
+                          value: themeService.themeMode,
+                          underline: const SizedBox(),
+                          items: const [
+                            DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
+                            DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
+                            DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
+                          ],
+                          onChanged: (mode) {
+                            if (mode != null) {
+                              themeService.setThemeMode(mode);
+                            }
+                          },
+                        ),
                       ],
                     ),
-                    DropdownButton<String>(
-                      value: _selectedLanguage,
-                      underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(value: 'English', child: Text('English')),
-                        DropdownMenuItem(value: 'Spanish', child: Text('Español')),
-                        DropdownMenuItem(value: 'French', child: Text('Français')),
-                        DropdownMenuItem(value: 'Hindi', child: Text('हिन्दी')),
-                      ],
-                      onChanged: (lang) {
-                        if (lang != null) {
-                          setState(() {
-                            _selectedLanguage = lang;
-                          });
-                        }
-                      },
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+                const SizedBox(height: 8),
+
+                // 🌐 Language Selection Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.language_outlined),
+                            const SizedBox(width: 14),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(context.translate('language_selection'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${context.translate('selected_language')}:\n${languageService.languageName}",
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        DropdownButton<String>(
+                          value: languageService.locale.languageCode,
+                          underline: const SizedBox(),
+                          items: const [
+                            DropdownMenuItem(value: 'en', child: Text('English')),
+                            DropdownMenuItem(value: 'kn', child: Text('ಕನ್ನಡ')),
+                            DropdownMenuItem(value: 'hi', child: Text('हिन्दी')),
+                          ],
+                          onChanged: (lang) {
+                            if (lang != null) {
+                              languageService.setLanguage(lang);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             const SizedBox(height: 20),
 
             const Text(
@@ -571,6 +594,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }

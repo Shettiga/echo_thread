@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
+import 'package:echo_thread/services/app_localizations.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = const Color(0xFF2E7D32);
+    final theme = Theme.of(context);
+    final themeColor = theme.colorScheme.primary;
+    final textOnSurface = theme.colorScheme.onSurface;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("About EchoThread"),
+        title: Text(context.translate('about')),
       ),
       drawer: const AppNavigationDrawer(currentRoute: "about"),
       body: SingleChildScrollView(
@@ -36,13 +39,13 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              "EchoThread",
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+            Text(
+              context.translate('title'),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.8),
             ),
-            const Text(
+            Text(
               "Version 1.0.0",
-              style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(color: textOnSurface.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 28),
 
@@ -54,13 +57,13 @@ class AboutScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Our Project",
+                      context.translate('about_project'),
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor),
                     ),
                     const Divider(height: 20),
-                    const Text(
+                    Text(
                       "EchoThread is a dynamic Flutter + Firebase application designed to bridge the gap between clothing donors, active charity volunteers, and non-profit organizations (NGOs).\n\nBy facilitating transparent clothing donations and real-time pickup tracking, the platform simplifies resource routing and fosters community-led sustainability efforts.",
-                      style: TextStyle(fontSize: 13.5, height: 1.4, color: Colors.black87),
+                      style: TextStyle(fontSize: 13.5, height: 1.4, color: textOnSurface.withOpacity(0.85)),
                     ),
                   ],
                 ),
@@ -76,13 +79,13 @@ class AboutScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Our Mission",
+                      context.translate('about_mission'),
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor),
                     ),
                     const Divider(height: 20),
-                    const Text(
+                    Text(
                       "We believe in a circular economy. Our mission is to reduce global landfill textile waste, encourage garment reusability, and provide essential clothing to individuals and families in need.",
-                      style: TextStyle(fontSize: 13.5, height: 1.4, color: Colors.black87),
+                      style: TextStyle(fontSize: 13.5, height: 1.4, color: textOnSurface.withOpacity(0.85)),
                     ),
                   ],
                 ),
@@ -98,13 +101,13 @@ class AboutScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Developer Information",
+                      context.translate('about_dev'),
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor),
                     ),
                     const Divider(height: 20),
-                    const Text(
+                    Text(
                       "This platform is created and maintained by the EchoThread Engineering Team, focused on leveraging modern mobile frameworks and real-time backend integrations to solve social and environmental challenges.",
-                      style: TextStyle(fontSize: 13.5, height: 1.4, color: Colors.black87),
+                      style: TextStyle(fontSize: 13.5, height: 1.4, color: textOnSurface.withOpacity(0.85)),
                     ),
                   ],
                 ),
@@ -120,13 +123,13 @@ class AboutScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Contact Information",
+                      context.translate('about_contact'),
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor),
                     ),
                     const Divider(height: 20),
-                    const Text(
+                    Text(
                       "For inquiries, partnerships, or NGO verification requests, please reach out to us:\n\n✉️ Email: info@echothread.org\n🌐 Website: www.echothread.org\n📍 Address: Green Plaza Tech Suite 10, Silicon Hub",
-                      style: TextStyle(fontSize: 13, height: 1.5, color: Colors.black87),
+                      style: TextStyle(fontSize: 13, height: 1.5, color: textOnSurface.withOpacity(0.85)),
                     ),
                   ],
                 ),

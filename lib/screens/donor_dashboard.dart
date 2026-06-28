@@ -94,7 +94,7 @@ class _DonorDashboardState extends State<DonorDashboard>
             children: [
               // 🔹 HEADER (Modern Green Banner)
               Container(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [themeColor, const Color(0xFF43A047)],
@@ -114,80 +114,53 @@ class _DonorDashboardState extends State<DonorDashboard>
                   ],
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                        );
+                        getUserName(); // Refresh details when returning from profile
+                      },
+                      child: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.white,
+                        backgroundImage: profileImage != null && profileImage!.isNotEmpty
+                            ? NetworkImage(profileImage!)
+                            : null,
+                        child: profileImage == null || profileImage!.isEmpty
+                            ? const Icon(Icons.person, color: Color(0xFF2E7D32))
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  "Hello, $userName 👋",
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  userRole,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
                           const Text(
-                            "Ready to make an impact today?",
-                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                            "Donor Dashboard",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            userRole,
+                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                            );
-                            getUserName(); // Refresh details when returning from profile
-                          },
-                          child: CircleAvatar(
-                            radius: 24,
-                            backgroundColor: Colors.white,
-                            backgroundImage: profileImage != null && profileImage!.isNotEmpty
-                                ? NetworkImage(profileImage!)
-                                : null,
-                            child: profileImage == null || profileImage!.isEmpty
-                                ? const Icon(Icons.person, color: Color(0xFF2E7D32))
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.menu, color: Colors.white),
-                          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                        ),
-                      ],
-                    )
                   ],
                 ),
               ),

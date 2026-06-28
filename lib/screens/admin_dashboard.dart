@@ -95,11 +95,17 @@ class _AdminDashboardState extends State<AdminDashboard>
 
         return Scaffold(
           key: _scaffoldKey,
-          drawer: const AppNavigationDrawer(currentRoute: 'dashboard'),
+          drawer: isDesktop ? null : Drawer(
+            child: _buildDrawerContent(context, isSidebar: false),
+          ),
           backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F8FC),
           appBar: AppBar(
             backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             elevation: 1,
+            leading: isDesktop ? null : IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            ),
             title: Row(
               children: [
                 Container(
@@ -121,204 +127,201 @@ class _AdminDashboardState extends State<AdminDashboard>
                 ),
               ],
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              ),
-              const SizedBox(width: 8),
-            ],
           ),
           body: Row(
             children: [
               if (isDesktop)
-                NavigationRail(
-                  selectedIndex: _currentTabIndex,
-                  onDestinationSelected: (index) {
-                    setState(() {
-                      _currentTabIndex = index;
-                    });
-                  },
-                  labelType: NavigationRailLabelType.all,
-                  selectedLabelTextStyle: TextStyle(
-                    color: themeColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
+                Container(
+                  width: 280,
+                  decoration: BoxDecoration(
+                    border: Border(right: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200)),
                   ),
-                  unselectedLabelTextStyle: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 10,
-                  ),
-                  backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                  selectedIconTheme: IconThemeData(color: themeColor),
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard),
-                      label: Text("Overview"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.people_outline),
-                      selectedIcon: Icon(Icons.people),
-                      label: Text("Users"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.home_work_outlined),
-                      selectedIcon: Icon(Icons.home_work),
-                      label: Text("NGOs"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.volunteer_activism_outlined),
-                      selectedIcon: Icon(Icons.volunteer_activism),
-                      label: Text("Donations"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.directions_run_outlined),
-                      selectedIcon: Icon(Icons.directions_run),
-                      label: Text("Volunteers"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.feedback_outlined),
-                      selectedIcon: Icon(Icons.feedback),
-                      label: Text("Feedback"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.support_agent),
-                      selectedIcon: Icon(Icons.support_agent),
-                      label: Text("Tickets"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.campaign_outlined),
-                      selectedIcon: Icon(Icons.campaign),
-                      label: Text("Broadcast"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.analytics_outlined),
-                      selectedIcon: Icon(Icons.analytics),
-                      label: Text("Reports"),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
-                      label: Text("Profile"),
-                    ),
-                  ],
+                  child: _buildDrawerContent(context, isSidebar: true),
                 ),
               Expanded(
                 child: panels[_currentTabIndex],
               ),
             ],
           ),
-          bottomNavigationBar: isDesktop
-              ? null
-              : BottomNavigationBar(
-                  type: BottomNavigationBarType.fixed,
-                  currentIndex: _currentTabIndex > 4 ? 4 : _currentTabIndex,
-                  selectedItemColor: themeColor,
-                  unselectedItemColor: Colors.grey,
-                  backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                  onTap: (index) {
-                    if (index == 4) {
-                      _showMoreOptionsBottomSheet(context);
-                    } else {
+        );
+      },
+    );
+  }
+
+  Widget _buildDrawerContent(BuildContext context, {required bool isSidebar}) {
+    final themeService = ThemeService();
+    final isDark = themeService.isDark(context);
+    final themeColor = const Color(0xFF673AB7);
+    final textOnSurface = Theme.of(context).colorScheme.onSurface;
+
+    final List<Map<String, dynamic>> menuItems = [
+      {'title': 'Overview', 'icon': Icons.dashboard_outlined, 'selectedIcon': Icons.dashboard},
+      {'title': 'Users', 'icon': Icons.people_outline, 'selectedIcon': Icons.people},
+      {'title': 'NGOs', 'icon': Icons.home_work_outlined, 'selectedIcon': Icons.home_work},
+      {'title': 'Donations', 'icon': Icons.volunteer_activism_outlined, 'selectedIcon': Icons.volunteer_activism},
+      {'title': 'Volunteers', 'icon': Icons.directions_run_outlined, 'selectedIcon': Icons.directions_run},
+      {'title': 'Feedback', 'icon': Icons.feedback_outlined, 'selectedIcon': Icons.feedback},
+      {'title': 'Tickets', 'icon': Icons.support_agent_outlined, 'selectedIcon': Icons.support_agent},
+      {'title': 'Broadcast', 'icon': Icons.campaign_outlined, 'selectedIcon': Icons.campaign},
+      {'title': 'Reports', 'icon': Icons.analytics_outlined, 'selectedIcon': Icons.analytics},
+      {'title': 'Profile', 'icon': Icons.person_outline, 'selectedIcon': Icons.person},
+    ];
+
+    return Container(
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      child: Column(
+        children: [
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF2E2E2E), const Color(0xFF1E1E1E)]
+                    : [themeColor, themeColor.withOpacity(0.8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundImage: _adminPhoto != null && _adminPhoto!.isNotEmpty
+                      ? NetworkImage(_adminPhoto!)
+                      : null,
+                  child: _adminPhoto == null || _adminPhoto!.isEmpty
+                      ? const Icon(Icons.shield, color: Colors.white, size: 26)
+                      : null,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _adminName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        "Administrator",
+                        style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Menu Options
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                ...List.generate(menuItems.length, (index) {
+                  final item = menuItems[index];
+                  final isSelected = _currentTabIndex == index;
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(
+                      isSelected ? item['selectedIcon'] : item['icon'],
+                      color: isSelected ? (isDark ? Colors.white : themeColor) : Colors.grey,
+                    ),
+                    title: Text(
+                      item['title'],
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected
+                            ? (isDark ? Colors.white : themeColor)
+                            : textOnSurface.withOpacity(0.8),
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedTileColor: isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : themeColor.withOpacity(0.08),
+                    onTap: () {
                       setState(() {
                         _currentTabIndex = index;
                       });
-                    }
+                      if (!isSidebar) {
+                        Navigator.pop(context);
+                      }
+                    },
+                  );
+                }),
+                const Divider(),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.settings_outlined, color: Colors.grey),
+                  title: Text("Settings", style: TextStyle(color: textOnSurface.withOpacity(0.8))),
+                  onTap: () {
+                    if (!isSidebar) Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
                   },
-                  items: const [
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.dashboard_outlined),
-                      label: "Stats",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.people_outlined),
-                      label: "Users",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.home_work_outlined),
-                      label: "NGOs",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.volunteer_activism_outlined),
-                      label: "Donations",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.more_horiz),
-                      label: "More",
-                    ),
-                  ],
                 ),
-        );
-      },
-    );
-  }
-
-  void _showMoreOptionsBottomSheet(BuildContext context) {
-    final isDark = ThemeService().isDark(context);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "System Management Options",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: 3,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                children: [
-                  _buildMoreItem(context, Icons.directions_run, "Volunteers", 4),
-                  _buildMoreItem(context, Icons.feedback, "Feedback", 5),
-                  _buildMoreItem(context, Icons.support_agent, "Tickets", 6),
-                  _buildMoreItem(context, Icons.campaign, "Broadcast", 7),
-                  _buildMoreItem(context, Icons.analytics, "Reports", 8),
-                  _buildMoreItem(context, Icons.person, "Profile", 9),
-                ],
-              )
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMoreItem(
-      BuildContext context, IconData icon, String label, int targetIndex) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pop(context);
-        setState(() {
-          _currentTabIndex = targetIndex;
-        });
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF673AB7).withOpacity(0.08),
-              shape: BoxShape.circle,
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.info_outline, color: Colors.grey),
+                  title: Text("About", style: TextStyle(color: textOnSurface.withOpacity(0.8))),
+                  onTap: () {
+                    if (!isSidebar) Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.logout, color: Colors.redAccent),
+                  title: const Text("Logout", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    if (!isSidebar) Navigator.pop(context);
+                    _logout(context);
+                  },
+                ),
+              ],
             ),
-            child: Icon(icon, color: const Color(0xFF673AB7)),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-          )
+        ],
+      ),
+    );
+  }
+
+  void _logout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Logout"),
+        content: const Text("Are you sure you want to log out of EchoThread?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogContext); // Close dialog
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text("Logout"),
+          ),
         ],
       ),
     );
@@ -1106,54 +1109,71 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
   String _searchQuery = "";
   String _statusFilter = "All";
 
+  final List<String> _statuses = ["All", "Pending", "Accepted", "Assigned", "Picked Up", "Completed"];
+
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeService().isDark(context);
     final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final themeColor = widget.themeColor;
 
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: "Search donations by clothes type or donor name...",
-                  ),
-                  onChanged: (val) {
-                    setState(() {
-                      _searchQuery = val.toLowerCase();
-                    });
-                  },
-                ),
+          // 🔎 Search bar
+          TextField(
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              hintText: "Search by clothes type or donor name...",
+              filled: true,
+              fillColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
               ),
-              const SizedBox(width: 12),
-              DropdownButton<String>(
-                value: _statusFilter,
-                underline: const SizedBox(),
-                items: const [
-                  DropdownMenuItem(value: "All", child: Text("All Statuses")),
-                  DropdownMenuItem(value: "Pending", child: Text("Pending")),
-                  DropdownMenuItem(value: "Accepted", child: Text("Accepted")),
-                  DropdownMenuItem(value: "In Progress", child: Text("In Progress")),
-                  DropdownMenuItem(value: "Delivered", child: Text("Delivered")),
-                  DropdownMenuItem(value: "Completed", child: Text("Completed")),
-                  DropdownMenuItem(value: "Cancelled", child: Text("Cancelled")),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _statusFilter = val;
-                    });
-                  }
-                },
-              ),
-            ],
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val.toLowerCase();
+              });
+            },
           ),
           const SizedBox(height: 16),
+
+          // 🏷️ Scrollable Status Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _statuses.map((status) {
+                final isSelected = _statusFilter == status;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: FilterChip(
+                    label: Text(status),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        _statusFilter = status;
+                      });
+                    },
+                    selectedColor: themeColor.withOpacity(0.2),
+                    checkmarkColor: themeColor,
+                    labelStyle: TextStyle(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? themeColor : (isDark ? Colors.white70 : Colors.black87),
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 📦 Donation Pipeline List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('donations').snapshots(),
@@ -1172,10 +1192,28 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
                   final status = (data['status'] ?? "").toString().toLowerCase();
 
                   bool matchesSearch = clothes.contains(_searchQuery) || donor.contains(_searchQuery);
-                  bool matchesStatus = _statusFilter == "All" || status == _statusFilter.toLowerCase();
+                  bool matchesStatus = false;
+
+                  if (_statusFilter == "All") {
+                    matchesStatus = true;
+                  } else if (_statusFilter == "Pending") {
+                    matchesStatus = status.contains("pending");
+                  } else if (_statusFilter == "Accepted") {
+                    matchesStatus = status.contains("accepted");
+                  } else if (_statusFilter == "Assigned") {
+                    matchesStatus = status.contains("assigned");
+                  } else if (_statusFilter == "Picked Up") {
+                    matchesStatus = status.contains("picked");
+                  } else if (_statusFilter == "Completed") {
+                    matchesStatus = status.contains("completed") || status.contains("delivered") || status.contains("distributed");
+                  }
 
                   return matchesSearch && matchesStatus;
                 }).toList();
+
+                if (filteredDocs.isEmpty) {
+                  return const Center(child: Text("No donations match the filter criteria."));
+                }
 
                 return ListView.builder(
                   itemCount: filteredDocs.length,
@@ -1186,6 +1224,7 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
                     final String clothes = dData['clothes'] ?? "Clothes";
                     final int qty = int.tryParse(dData['quantity']?.toString() ?? '1') ?? 1;
                     final String donorName = dData['donorName'] ?? "Anonymous";
+                    final String donorAddress = dData['donorAddress'] ?? "No Address";
                     final String ngoName = dData['ngoName'] ?? "Unassigned NGO";
                     final String volunteerName = dData['volunteerName'] ?? "Unassigned Volunteer";
                     final String status = dData['status'] ?? "Pending";
@@ -1202,34 +1241,137 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
                           color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
                         ),
                       ),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.green.withOpacity(0.1),
-                          child: const Icon(Icons.checkroom, color: Colors.green),
-                        ),
-                        title: Text("$clothes (Qty: $qty)", style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text("Donor: $donorName • NGO: $ngoName\nVolunteer: $volunteerName • Date: $dateStr"),
-                        isThreeLine: true,
-                        trailing: DropdownButton<String>(
-                          value: _formatStatusValue(status),
-                          underline: const SizedBox(),
-                          icon: const Icon(Icons.arrow_drop_down, color: Colors.deepPurple),
-                          onChanged: (val) async {
-                            if (val != null) {
-                              await FirebaseFirestore.instance
-                                  .collection('donations')
-                                  .doc(dId)
-                                  .update({'status': val});
-                            }
-                          },
-                          items: const [
-                            DropdownMenuItem(value: "Pending", child: Text("Pending")),
-                            DropdownMenuItem(value: "Accepted", child: Text("Accepted")),
-                            DropdownMenuItem(value: "In Progress", child: Text("In Progress")),
-                            DropdownMenuItem(value: "Delivered", child: Text("Delivered")),
-                            DropdownMenuItem(value: "Completed", child: Text("Completed")),
-                            DropdownMenuItem(value: "Cancelled", child: Text("Cancelled")),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    "$clothes (Qty: $qty)",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _getStatusBgColor(status),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    status,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: _getStatusTextColor(status),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text("Donor: $donorName", style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                            Text("Address: $donorAddress", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text("NGO Hub: $ngoName", style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                            Text("Volunteer: $volunteerName", style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            Text("Date: $dateStr", style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            const Divider(height: 24),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(foregroundColor: themeColor),
+                                    onPressed: () {
+                                      // View details dialog
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text("Donation Details"),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text("Clothes Type: $clothes", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                              Text("Quantity: $qty"),
+                                              Text("Donor: $donorName"),
+                                              Text("Donor Address: $donorAddress"),
+                                              Text("NGO Hub: $ngoName"),
+                                              Text("Volunteer Name: $volunteerName"),
+                                              Text("Current Status: $status"),
+                                              Text("Report Date: $dateStr"),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text("Close"),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.info_outline, size: 16),
+                                    label: const Text("Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(foregroundColor: Colors.indigo),
+                                    onPressed: () {
+                                      _showAssignVolunteerDialog(context, dId, clothes);
+                                    },
+                                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                                    label: const Text("Assign", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                                    onPressed: () {
+                                      _showEditStatusDialog(context, dId, status);
+                                    },
+                                    icon: const Icon(Icons.edit_outlined, size: 16),
+                                    label: const Text("Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                    onPressed: () {
+                                      // Confirm delete
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text("Delete Donation"),
+                                          content: const Text("Are you sure you want to delete this donation from the system?"),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text("Cancel"),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                              onPressed: () async {
+                                                Navigator.pop(context);
+                                                await FirebaseFirestore.instance.collection('donations').doc(dId).delete();
+                                              },
+                                              child: const Text("Delete", style: TextStyle(color: Colors.white)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.delete_outline, size: 16),
+                                    label: const Text("Delete", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -1244,16 +1386,152 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
     );
   }
 
-  String _formatStatusValue(String firestoreValue) {
-    final lower = firestoreValue.toLowerCase();
-    if (lower.contains('pending')) return 'Pending';
-    if (lower.contains('accepted')) return 'Accepted';
-    if (lower.contains('progress') || lower.contains('transit') || lower.contains('picked')) return 'In Progress';
-    if (lower.contains('delivered')) return 'Delivered';
-    if (lower.contains('completed') || lower.contains('distributed')) return 'Completed';
-    if (lower.contains('cancelled') || lower.contains('rejected')) return 'Cancelled';
-    return 'Pending';
+  void _showAssignVolunteerDialog(BuildContext context, String donationId, String clothesName) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Assign Volunteer for $clothesName"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .where('role', isEqualTo: 'Volunteer')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Text("No registered active volunteers found.");
+                }
+
+                final volunteers = snapshot.data!.docs;
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: volunteers.length,
+                  itemBuilder: (context, index) {
+                    final doc = volunteers[index];
+                    final data = doc.data() as Map<String, dynamic>;
+                    final String vName = data['name'] ?? "Volunteer";
+                    final String vId = doc.id;
+
+                    return ListTile(
+                      title: Text(vName),
+                      subtitle: Text(data['email'] ?? ""),
+                      trailing: const Icon(Icons.add, color: Colors.green),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await FirebaseFirestore.instance.collection('donations').doc(donationId).update({
+                          'status': 'Assigned to Volunteer',
+                          'volunteerId': vId,
+                          'volunteerName': vName,
+                          'assignedAt': FieldValue.serverTimestamp(),
+                        });
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
   }
+
+  void _showEditStatusDialog(BuildContext context, String donationId, String currentStatus) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Update Donation Status"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text("Pending"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Pending'});
+                },
+              ),
+              ListTile(
+                title: const Text("Accepted by NGO"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Accepted by NGO'});
+                },
+              ),
+              ListTile(
+                title: const Text("Assigned to Volunteer"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Assigned to Volunteer'});
+                },
+              ),
+              ListTile(
+                title: const Text("Picked Up"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Picked Up'});
+                },
+              ),
+              ListTile(
+                title: const Text("Delivered"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Delivered'});
+                },
+              ),
+              ListTile(
+                title: const Text("Completed"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Completed'});
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _getStatusBgColor(String status) {
+    final lower = status.toLowerCase();
+    if (lower.contains('pending')) return Colors.orange.withOpacity(0.1);
+    if (lower.contains('accepted')) return Colors.teal.withOpacity(0.1);
+    if (lower.contains('assigned')) return Colors.indigo.withOpacity(0.1);
+    if (lower.contains('picked')) return Colors.purple.withOpacity(0.1);
+    if (lower.contains('completed') || lower.contains('delivered')) return Colors.green.withOpacity(0.1);
+    return Colors.grey.withOpacity(0.1);
+  }
+
+  Color _getStatusTextColor(String status) {
+    final lower = status.toLowerCase();
+    if (lower.contains('pending')) return Colors.orange.shade800;
+    if (lower.contains('accepted')) return Colors.teal.shade800;
+    if (lower.contains('assigned')) return Colors.indigo.shade800;
+    if (lower.contains('picked')) return Colors.purple.shade800;
+    if (lower.contains('completed') || lower.contains('delivered')) return Colors.green.shade800;
+    return Colors.grey.shade800;
+  }
+}
 }
 
 // ----------------------------------------------------
@@ -1314,6 +1592,10 @@ class _VolunteerManagementPanel extends StatelessWidget {
                     }).length;
                   }
 
+                  final String email = data['email'] ?? "No Email";
+                  final String profileImage = data['profileImage'] ?? "";
+                  final bool isActive = status.toLowerCase() == 'active';
+
                   return Card(
                     color: cardBg,
                     shape: RoundedRectangleBorder(
@@ -1322,51 +1604,187 @@ class _VolunteerManagementPanel extends StatelessWidget {
                         color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
                       ),
                     ),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.indigo.withOpacity(0.1),
-                        child: const Icon(Icons.directions_run, color: Colors.indigo),
-                      ),
-                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text("Phone: $phone\nTasks Assigned: $totalAssigned | Completed: $completedTasks"),
-                      isThreeLine: true,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: status.toLowerCase() == 'active'
-                                  ? Colors.green.withOpacity(0.12)
-                                  : Colors.red.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              status,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: status.toLowerCase() == 'active' ? Colors.green : Colors.red,
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: themeColor.withOpacity(0.1),
+                                backgroundImage: profileImage.isNotEmpty ? NetworkImage(profileImage) : null,
+                                child: profileImage.isEmpty ? Icon(Icons.person, color: themeColor, size: 28) : null,
                               ),
-                            ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      email,
+                                      style: const TextStyle(color: Colors.grey, fontSize: 12.5),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isActive ? "Active" : "Inactive",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          DropdownButton<String>(
-                            underline: const SizedBox(),
-                            icon: const Icon(Icons.more_vert),
-                            onChanged: (val) async {
-                              if (val == 'Suspend') {
-                                await FirebaseFirestore.instance.collection('users').doc(vid).update({'status': 'Suspended'});
-                              } else if (val == 'Activate') {
-                                await FirebaseFirestore.instance.collection('users').doc(vid).update({'status': 'Active'});
-                              } else if (val == 'Assign') {
-                                _showForceAssignDonationDialog(context, vid, name);
-                              }
-                            },
-                            items: [
-                              DropdownMenuItem(value: status.toLowerCase() == 'suspended' ? 'Activate' : 'Suspend', child: Text(status.toLowerCase() == 'suspended' ? 'Activate' : 'Suspend')),
-                              const DropdownMenuItem(value: 'Assign', child: Text('Assign Task')),
+                          const Divider(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  Text(
+                                    "$totalAssigned",
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  ),
+                                  const Text("Assigned Tasks", style: TextStyle(color: Colors.grey, fontSize: 11)),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  Text(
+                                    "$completedTasks",
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+                                  ),
+                                  const Text("Completed Tasks", style: TextStyle(color: Colors.grey, fontSize: 11)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton.icon(
+                                  style: TextButton.styleFrom(foregroundColor: themeColor),
+                                  onPressed: () {
+                                    // View Details Dialog
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text("Volunteer Details"),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Center(
+                                              child: CircleAvatar(
+                                                radius: 40,
+                                                backgroundImage: profileImage.isNotEmpty ? NetworkImage(profileImage) : null,
+                                                child: profileImage.isEmpty ? const Icon(Icons.person, size: 40) : null,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text("Name: $name", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                            Text("Email: $email"),
+                                            Text("Phone: $phone"),
+                                            Text("Status: $status"),
+                                            Text("Assigned: $totalAssigned"),
+                                            Text("Completed: $completedTasks"),
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text("Close"),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.info_outline, size: 16),
+                                  label: const Text("View", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                              ),
+                              Expanded(
+                                child: TextButton.icon(
+                                  style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                                  onPressed: () {
+                                    // Edit Status Dialog
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text("Edit Status"),
+                                        content: Text("Change status for $name?"),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () async {
+                                              Navigator.pop(context);
+                                              await FirebaseFirestore.instance.collection('users').doc(vid).update({'status': 'Active'});
+                                            },
+                                            child: const Text("Activate (Active)", style: TextStyle(color: Colors.green)),
+                                          ),
+                                          TextButton(
+                                            onPressed: () async {
+                                              Navigator.pop(context);
+                                              await FirebaseFirestore.instance.collection('users').doc(vid).update({'status': 'Suspended'});
+                                            },
+                                            child: const Text("Suspend (Inactive)", style: TextStyle(color: Colors.red)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.edit_outlined, size: 16),
+                                  label: const Text("Edit", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                              ),
+                              Expanded(
+                                child: TextButton.icon(
+                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                  onPressed: () {
+                                    // Delete Confirmation
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text("Delete Volunteer"),
+                                        content: Text("Are you sure you want to delete $name from the system?"),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text("Cancel"),
+                                          ),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                            onPressed: () async {
+                                              Navigator.pop(context);
+                                              await FirebaseFirestore.instance.collection('users').doc(vid).delete();
+                                            },
+                                            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.delete_outline, size: 16),
+                                  label: const Text("Delete", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                              ),
                             ],
                           ),
                         ],
