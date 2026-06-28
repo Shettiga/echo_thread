@@ -150,65 +150,23 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
-      // Call secure sendSMSOTP Cloud Function to dispatch verification code
-      final projectId = Firebase.app().options.projectId;
-      final functionUrl = 'https://us-central1-$projectId.cloudfunctions.net/sendSMSOTP';
-      
-      debugPrint('[LOGIN] Requesting OTP from Cloud Function...');
-      final response = await http.post(
-        Uri.parse(functionUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'data': {
-            'phone': phone,
-          }
-        }),
-      ).timeout(const Duration(seconds: 12));
+      // 1. Generate 6-digit OTP code
+      final random = math.Random();
+      final otp = (100000 + random.nextInt(900000)).toString();
 
-      if (response.statusCode == 404) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("[DEMO MODE] Server offline. Use mock code '123456' to verify."),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 6),
-          ),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OtpVerificationScreen(
-              email: emailText,
-              phone: phone,
-              userName: uName,
-              purpose: OtpPurpose.login,
-            ),
-          ),
-        );
-        return;
-      }
+      // 2. Save OTP and 5m expiration timestamp in Firestore
+      final expiresAt = DateTime.now().add(const Duration(minutes: 5));
+      await FirebaseFirestore.instance.collection('login_otps').doc(emailText).set({
+        'email': emailText,
+        'otp': otp,
+        'expiresAt': Timestamp.fromDate(expiresAt),
+      });
 
-      if (response.statusCode != 200) {
-        throw Exception("Server returned status code ${response.statusCode}");
-      }
-
-      final responseData = jsonDecode(response.body);
-      if (responseData['result']?['success'] != true) {
-        throw Exception(responseData['result']?['error'] ?? "Failed to send verification SMS.");
-      }
-
-      // Send Real Login Notifications (Email & SMS)
-      NotificationService.sendEmail(
+      // 3. Send OTP to user email
+      await NotificationService.sendEmail(
         email: emailText,
         name: uName,
-        activity: 'Login Activity Notification',
-        dateTime: DateTime.now(),
-      );
-
-      NotificationService.sendSMS(
-        phone: phone,
-        name: uName,
-        activity: 'Login Activity',
+        activity: "Login Verification (OTP Code: $otp)",
         dateTime: DateTime.now(),
       );
 
@@ -216,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('SMS Verification Code Sent! Please verify to complete login.'),
+          content: Text('Verification code sent to your email! Please verify to complete login.'),
           backgroundColor: Colors.blue,
         ),
       );

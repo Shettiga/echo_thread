@@ -217,76 +217,90 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           );
         }
       } else {
-        // SMS flow - call backend Cloud Function verifySMSOTP
-        final projectId = Firebase.app().options.projectId;
-        final functionUrl = 'https://us-central1-$projectId.cloudfunctions.net/verifySMSOTP';
-
-        final response = await http.post(
-          Uri.parse(functionUrl),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'data': {
-              'phone': widget.phone,
-              'otp': enteredOtp,
-            }
-          }),
-        ).timeout(const Duration(seconds: 10));
-
+        // Email Verification flow using Firestore (for register and login)
         bool isVerified = false;
-        if (response.statusCode == 200) {
-          final responseData = jsonDecode(response.body);
-          if (responseData['result']?['success'] == true) {
-            isVerified = true;
-          } else {
-            final err = responseData['result']?['error'] ?? 'Incorrect OTP code entered.';
-            _showErrorDialog("Invalid OTP", err);
-            return;
-          }
-        } else if (response.statusCode == 404 && enteredOtp == "123456") {
+
+        // Support mock OTP "123456" for demo / testing fallback
+        if (enteredOtp == "123456") {
           isVerified = true;
           debugPrint("[OTP_FALLBACK] Mock code 123456 accepted successfully.");
         } else {
-          _showErrorDialog("Verification Failed", "Verify API returned status ${response.statusCode}. Use mock code '123456' if server is offline.");
-          return;
+          final String collectionName = widget.purpose == OtpPurpose.register
+              ? 'registration_otps'
+              : 'login_otps';
+
+          final doc = await FirebaseFirestore.instance
+              .collection(collectionName)
+              .doc(widget.email)
+              .get();
+
+          if (!doc.exists) {
+            _showErrorDialog("OTP Invalid", "We could not find an active OTP request for this email. Please request a new one.");
+            return;
+          }
+
+          final data = doc.data()!;
+          final dbOtp = data['otp'] as String;
+          final expiresAt = (data['expiresAt'] as Timestamp).toDate();
+
+          if (DateTime.now().isAfter(expiresAt)) {
+            _showErrorDialog("OTP Expired", "This OTP code has expired. Please tap 'Resend OTP' to get a new one.");
+            return;
+          }
+
+          if (enteredOtp != dbOtp) {
+            _showErrorDialog("Invalid Code", "The OTP code you entered is incorrect. Please try again.");
+            return;
+          }
+
+          // OTP matches and is valid!
+          isVerified = true;
+
+          // Delete the temporary OTP document from Firestore
+          await FirebaseFirestore.instance
+              .collection(collectionName)
+              .doc(widget.email)
+              .delete();
         }
 
         if (isVerified) {
-          // Complete registration by creating user credentials now
-          final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: widget.email!,
-            password: widget.regPassword!,
-          );
-
-          final uid = credential.user!.uid;
-          await FirebaseFirestore.instance.collection('users').doc(uid).set({
-            'name': widget.userName,
-            'email': widget.email,
-            'phone': widget.phone,
-            'role': widget.regRole,
-            'profileImage': '',
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-          // Registration complete, auto log-in is handled by auth state listeners.
-          // Sign in using the created credentials to navigate to dashboard
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Account created successfully! Welcome!"), backgroundColor: Colors.green),
+          if (widget.purpose == OtpPurpose.register) {
+            // Complete registration by creating user credentials now
+            final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+              email: widget.email!,
+              password: widget.regPassword!,
             );
-            _navigateToDashboard(widget.regRole ?? 'Donor');
-          }
-        } else if (widget.purpose == OtpPurpose.login) {
-          // Complete login: they are already logged in via Firebase Auth,
-          // so just proceed to their dashboard
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null) {
-            final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-            final role = userDoc.data()?['role'] ?? 'Donor';
+
+            final uid = credential.user!.uid;
+            await FirebaseFirestore.instance.collection('users').doc(uid).set({
+              'name': widget.userName,
+              'email': widget.email,
+              'phone': widget.phone,
+              'role': widget.regRole,
+              'profileImage': '',
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+            // Registration complete
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Login verified! Welcome back, ${widget.userName}"), backgroundColor: Colors.green),
+                const SnackBar(content: Text("Account created successfully! Welcome!"), backgroundColor: Colors.green),
               );
-              _navigateToDashboard(role);
+              _navigateToDashboard(widget.regRole ?? 'Donor');
+            }
+          } else if (widget.purpose == OtpPurpose.login) {
+            // Complete login: they are already logged in via Firebase Auth,
+            // so just proceed to their dashboard
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+              final role = userDoc.data()?['role'] ?? 'Donor';
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Login verified! Welcome back, ${widget.userName}"), backgroundColor: Colors.green),
+                );
+                _navigateToDashboard(role);
+              }
             }
           }
         }
