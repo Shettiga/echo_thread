@@ -1532,7 +1532,6 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
     return Colors.grey.shade800;
   }
 }
-}
 
 // ----------------------------------------------------
 // VOLUNTEER PANEL

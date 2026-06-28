@@ -149,10 +149,10 @@ class _RegisterScreenState extends State<RegisterScreen>
       _shakeController.forward(from: 0.0);
       _showErrorDialog("Registration Error", message);
     } on FirebaseException catch (e) {
-      debugPrint("[FIRESTORE_WRITE_ERROR] UID: $currentUid, Collection: users, DocID: $currentUid, Exception: ${e.code} - ${e.message}");
+      debugPrint("[OTP_REQUEST_ERROR] FirebaseException: ${e.code} - ${e.message}");
       if (!mounted) return;
       _shakeController.forward(from: 0.0);
-      _showErrorDialog("Firebase Error", e.message ?? "Failed to save user profile.");
+      _showErrorDialog("Firebase Error", e.message ?? "Failed to send verification SMS.");
     } catch (e) {
       debugPrint("Unknown exception during registration: $e");
       if (!mounted) return;
