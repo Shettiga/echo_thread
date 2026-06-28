@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/screens/login_screen.dart';
+import 'settings_screen.dart';
+import 'about_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
