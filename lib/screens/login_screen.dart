@@ -165,6 +165,29 @@ class _LoginScreenState extends State<LoginScreen>
         }),
       ).timeout(const Duration(seconds: 12));
 
+      if (response.statusCode == 404) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("[DEMO MODE] Server offline. Use mock code '123456' to verify."),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 6),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OtpVerificationScreen(
+              email: emailText,
+              phone: phone,
+              userName: uName,
+              purpose: OtpPurpose.login,
+            ),
+          ),
+        );
+        return;
+      }
+
       if (response.statusCode != 200) {
         throw Exception("Server returned status code ${response.statusCode}");
       }

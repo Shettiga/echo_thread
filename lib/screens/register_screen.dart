@@ -109,6 +109,32 @@ class _RegisterScreenState extends State<RegisterScreen>
         }),
       ).timeout(const Duration(seconds: 12));
 
+      if (response.statusCode == 404) {
+        if (!mounted) return;
+        FocusScope.of(context).unfocus();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("[DEMO MODE] Server offline. Use mock code '123456' to verify."),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 6),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OtpVerificationScreen(
+              email: regEmail,
+              phone: regPhone,
+              userName: regName,
+              purpose: OtpPurpose.register,
+              regPassword: regPassword,
+              regRole: selectedRole,
+            ),
+          ),
+        );
+        return;
+      }
+
       if (response.statusCode != 200) {
         throw Exception("Server returned status code ${response.statusCode}");
       }
