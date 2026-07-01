@@ -480,7 +480,7 @@ exports.onPasswordResetCreated = functions.firestore.document('password_resets/{
   if (!email || !otp) return;
 
   // Try to find userName
-  const userQuery = await db.collection('users').where('email', isEqualTo: email).limit(1).get();
+  const userQuery = await db.collection('users').where('email', '==', email).limit(1).get();
   const userName = userQuery.docs.length > 0 ? (userQuery.docs[0].data().name || 'User') : 'User';
 
   const detailsHtml = `
