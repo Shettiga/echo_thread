@@ -1,8 +1,11 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:echo_thread/config.dart';
 import 'package:echo_thread/services/cloudinary_service.dart';
 
 class DonateClothesScreen extends StatefulWidget {
@@ -179,24 +182,29 @@ class _DonateClothesScreenState extends State<DonateClothesScreen>
       }
 
       final String uid = user.uid;
-      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: new_document");
-      final docRef = await FirebaseFirestore.instance.collection('donations').add({
-        'donorId': uid,
-        'donorName': donorName,
-        'clothes': category,
-        'quantity': _quantityController.text.trim(),
-        'size': size,
-        'condition': condition,
-        'location': _addressController.text.trim(),
-        'imageUrl': imageUrl,
-        'pickupDate':
-            "${_pickupDate!.year}-${_pickupDate!.month.toString().padLeft(2, '0')}-${_pickupDate!.day.toString().padLeft(2, '0')}",
-        'status': "Pending",
-        'volunteerId': null,
-        'volunteerName': null,
-        'createdAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 10));
-      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: ${docRef.id}, Response: Donation submitted successfully");
+      debugPrint("[EXPRESS_API_POST_START] UID: $uid, Endpoint: /api/create-donation");
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendUrl}/api/create-donation'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'donorId': uid,
+          'donorName': donorName,
+          'clothes': category,
+          'quantity': _quantityController.text.trim(),
+          'size': size,
+          'condition': condition,
+          'location': _addressController.text.trim(),
+          'imageUrl': imageUrl,
+          'pickupDate': "${_pickupDate!.year}-${_pickupDate!.month.toString().padLeft(2, '0')}-${_pickupDate!.day.toString().padLeft(2, '0')}",
+        }),
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to submit donation.');
+      }
+      final responseData = jsonDecode(response.body);
+      final newDocId = responseData['donationId'] ?? 'unknown';
+      debugPrint("[EXPRESS_API_POST_SUCCESS] UID: $uid, Endpoint: /api/create-donation, DocID: $newDocId");
 
       if (!mounted) return;
 

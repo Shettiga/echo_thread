@@ -14,6 +14,7 @@ import 'volunteer_dashboard.dart';
 import 'admin_dashboard.dart';
 import 'forgot_password_screen.dart';
 import 'otp_verification_screen.dart';
+import 'package:echo_thread/config.dart';
 import 'package:echo_thread/services/app_localizations.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/services/theme_service.dart';
@@ -150,25 +151,20 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
-      // 1. Generate 6-digit OTP code
-      final random = math.Random();
-      final otp = (100000 + random.nextInt(900000)).toString();
+      // Send OTP to user email via Express backend API
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendUrl}/api/send-email-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': emailText,
+          'name': uName,
+          'purpose': 'login',
+        }),
+      ).timeout(const Duration(seconds: 10));
 
-      // 2. Save OTP and 5m expiration timestamp in Firestore
-      final expiresAt = DateTime.now().add(const Duration(minutes: 5));
-      await FirebaseFirestore.instance.collection('login_otps').doc(emailText).set({
-        'email': emailText,
-        'otp': otp,
-        'expiresAt': Timestamp.fromDate(expiresAt),
-      });
-
-      // 3. Send OTP to user email
-      await NotificationService.sendEmail(
-        email: emailText,
-        name: uName,
-        activity: "Login Verification (OTP Code: $otp)",
-        dateTime: DateTime.now(),
-      );
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to send verification code.');
+      }
 
       if (!mounted) return;
 

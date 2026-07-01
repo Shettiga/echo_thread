@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:echo_thread/screens/login_screen.dart';
+import 'package:echo_thread/config.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String email;
@@ -59,10 +60,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final projectId = Firebase.app().options.projectId;
-      final functionUrl = 'https://us-central1-$projectId.cloudfunctions.net/resetPasswordWithOTP';
+      final functionUrl = '${AppConfig.backendUrl}/api/password-reset';
 
-      debugPrint('[RESET_PASSWORD] Triggering Cloud Function request at: $functionUrl');
+      debugPrint('[RESET_PASSWORD] Triggering Express API request at: $functionUrl');
       
       bool functionSucceeded = false;
       String errorMessage = '';
@@ -72,13 +72,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           Uri.parse(functionUrl),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'data': {
-              'email': widget.email,
-              'otp': widget.otp,
-              'newPassword': passwordText,
-            }
+            'email': widget.email,
+            'otp': widget.otp,
+            'newPassword': passwordText,
           }),
-        ).timeout(const Duration(seconds: 8));
+        ).timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);

@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/screens/reset_password_screen.dart';
+import 'package:echo_thread/config.dart';
 import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/services/app_localizations.dart';
 
@@ -100,43 +101,32 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     setState(() => _isLoading = true);
     try {
       if (widget.purpose == OtpPurpose.forgotPassword) {
-        // Generate new Email OTP
-        final random = Random();
-        final newOtp = (100000 + random.nextInt(900000)).toString();
-        final expiresAt = DateTime.now().add(const Duration(minutes: 5));
-
-        await FirebaseFirestore.instance.collection('password_resets').doc(widget.email).set({
-          'email': widget.email,
-          'otp': newOtp,
-          'createdAt': FieldValue.serverTimestamp(),
-          'expiresAt': Timestamp.fromDate(expiresAt),
-        });
-
-        // Backend trigger onPasswordResetCreated sends the email automatically.
-        // We also fall back to NotificationService mock if SMTP is missing
-        await NotificationService.sendEmail(
-          email: widget.email!,
-          name: widget.userName,
-          activity: "Resend Forgot Password (OTP Code: $newOtp)",
-          dateTime: DateTime.now(),
-        );
-      } else {
-        // SMS OTP resend call using our secure backend Cloud Function
-        final projectId = Firebase.app().options.projectId;
-        final functionUrl = 'https://us-central1-$projectId.cloudfunctions.net/sendSMSOTP';
-        
+        // Send email OTP via Express API
         final response = await http.post(
-          Uri.parse(functionUrl),
+          Uri.parse('${AppConfig.backendUrl}/api/send-email-otp'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'data': {
-              'phone': widget.phone,
-            }
+            'email': widget.email,
+            'name': widget.userName,
+            'purpose': 'forgotPassword',
           }),
         ).timeout(const Duration(seconds: 10));
 
         if (response.statusCode != 200) {
-          throw Exception('Failed to send OTP via Cloud Function: ${response.statusCode}');
+          throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to send OTP.');
+        }
+      } else {
+        // SMS OTP resend call using Express API
+        final response = await http.post(
+          Uri.parse('${AppConfig.backendUrl}/api/send-sms-otp'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'phone': widget.phone,
+          }),
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode != 200) {
+          throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to send SMS OTP.');
         }
       }
 
@@ -176,28 +166,19 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     try {
       if (widget.purpose == OtpPurpose.forgotPassword) {
-        // 1. Fetch OTP details from Firestore (Email flow)
-        final doc = await FirebaseFirestore.instance
-            .collection('password_resets')
-            .doc(widget.email)
-            .get();
+        // 1. Verify Email OTP via Express API
+        final response = await http.post(
+          Uri.parse('${AppConfig.backendUrl}/api/verify-email-otp'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': widget.email,
+            'otp': enteredOtp,
+            'purpose': 'forgotPassword',
+          }),
+        ).timeout(const Duration(seconds: 10));
 
-        if (!doc.exists) {
-          _showErrorDialog("OTP Invalid", "We could not find an active OTP request for this email. Please request a new one.");
-          return;
-        }
-
-        final data = doc.data()!;
-        final dbOtp = data['otp'] as String;
-        final expiresAt = (data['expiresAt'] as Timestamp).toDate();
-
-        if (DateTime.now().isAfter(expiresAt)) {
-          _showErrorDialog("OTP Expired", "This OTP code has expired. Please tap 'Resend OTP' to get a new one.");
-          return;
-        }
-
-        if (enteredOtp != dbOtp) {
-          _showErrorDialog("Invalid Code", "The OTP code you entered is incorrect. Please try again.");
+        if (response.statusCode != 200) {
+          _showErrorDialog("OTP Invalid", jsonDecode(response.body)['error'] ?? "Incorrect or expired OTP.");
           return;
         }
 
@@ -217,7 +198,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           );
         }
       } else {
-        // Email Verification flow using Firestore (for register and login)
+        // Email/SMS Verification flow using Express API (for register and login)
         bool isVerified = false;
 
         // Support mock OTP "123456" for demo / testing fallback
@@ -225,61 +206,68 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           isVerified = true;
           debugPrint("[OTP_FALLBACK] Mock code 123456 accepted successfully.");
         } else {
-          final String collectionName = widget.purpose == OtpPurpose.register
-              ? 'registration_otps'
-              : 'login_otps';
+          // Attempt verifying via verify-email-otp first
+          final emailResponse = await http.post(
+            Uri.parse('${AppConfig.backendUrl}/api/verify-email-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': widget.email,
+              'otp': enteredOtp,
+              'purpose': widget.purpose == OtpPurpose.register ? 'register' : 'login',
+            }),
+          ).timeout(const Duration(seconds: 10));
 
-          final doc = await FirebaseFirestore.instance
-              .collection(collectionName)
-              .doc(widget.email)
-              .get();
+          if (emailResponse.statusCode == 200) {
+            isVerified = true;
+          } else {
+            // If failed, and we have a phone number, try verifying via verify-sms-otp (in case resend sent SMS OTP)
+            if (widget.phone != null && widget.phone!.isNotEmpty) {
+              final smsResponse = await http.post(
+                Uri.parse('${AppConfig.backendUrl}/api/verify-sms-otp'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'phone': widget.phone,
+                  'otp': enteredOtp,
+                }),
+              ).timeout(const Duration(seconds: 10));
 
-          if (!doc.exists) {
-            _showErrorDialog("OTP Invalid", "We could not find an active OTP request for this email. Please request a new one.");
-            return;
+              if (smsResponse.statusCode == 200) {
+                isVerified = true;
+              } else {
+                _showErrorDialog("OTP Invalid", jsonDecode(smsResponse.body)['error'] ?? "Incorrect or expired OTP.");
+                return;
+              }
+            } else {
+              _showErrorDialog("OTP Invalid", jsonDecode(emailResponse.body)['error'] ?? "Incorrect or expired OTP.");
+              return;
+            }
           }
-
-          final data = doc.data()!;
-          final dbOtp = data['otp'] as String;
-          final expiresAt = (data['expiresAt'] as Timestamp).toDate();
-
-          if (DateTime.now().isAfter(expiresAt)) {
-            _showErrorDialog("OTP Expired", "This OTP code has expired. Please tap 'Resend OTP' to get a new one.");
-            return;
-          }
-
-          if (enteredOtp != dbOtp) {
-            _showErrorDialog("Invalid Code", "The OTP code you entered is incorrect. Please try again.");
-            return;
-          }
-
-          // OTP matches and is valid!
-          isVerified = true;
-
-          // Delete the temporary OTP document from Firestore
-          await FirebaseFirestore.instance
-              .collection(collectionName)
-              .doc(widget.email)
-              .delete();
         }
 
         if (isVerified) {
           if (widget.purpose == OtpPurpose.register) {
-            // Complete registration by creating user credentials now
-            final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            // Complete registration by calling backend register API
+            final regResponse = await http.post(
+              Uri.parse('${AppConfig.backendUrl}/api/register'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'email': widget.email,
+                'password': widget.regPassword,
+                'name': widget.userName,
+                'phone': widget.phone,
+                'role': widget.regRole,
+              }),
+            ).timeout(const Duration(seconds: 15));
+
+            if (regResponse.statusCode != 200) {
+              throw Exception(jsonDecode(regResponse.body)['error'] ?? 'Registration failed.');
+            }
+
+            // Establish the client-side session using FirebaseAuth sign in
+            await FirebaseAuth.instance.signInWithEmailAndPassword(
               email: widget.email!,
               password: widget.regPassword!,
             );
-
-            final uid = credential.user!.uid;
-            await FirebaseFirestore.instance.collection('users').doc(uid).set({
-              'name': widget.userName,
-              'email': widget.email,
-              'phone': widget.phone,
-              'role': widget.regRole,
-              'profileImage': '',
-              'createdAt': FieldValue.serverTimestamp(),
-            });
 
             // Registration complete
             if (mounted) {

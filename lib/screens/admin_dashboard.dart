@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:echo_thread/config.dart';
 import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/screens/login_screen.dart';
@@ -1426,12 +1429,17 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
                       trailing: const Icon(Icons.add, color: Colors.green),
                       onTap: () async {
                         Navigator.pop(context);
-                        await FirebaseFirestore.instance.collection('donations').doc(donationId).update({
-                          'status': 'Assigned to Volunteer',
-                          'volunteerId': vId,
-                          'volunteerName': vName,
-                          'assignedAt': FieldValue.serverTimestamp(),
-                        });
+                        await http.post(
+                          Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                          headers: {'Content-Type': 'application/json'},
+                          body: jsonEncode({
+                            'donationId': donationId,
+                            'status': 'Assigned to Volunteer',
+                            'volunteerId': vId,
+                            'volunteerName': vName,
+                            'assignedAt': 'serverTimestamp',
+                          }),
+                        );
                       },
                     );
                   },
@@ -1463,42 +1471,84 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
                 title: const Text("Pending"),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Pending'});
+                  await http.post(
+                    Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'donationId': donationId,
+                      'status': 'Pending',
+                    }),
+                  );
                 },
               ),
               ListTile(
                 title: const Text("Accepted by NGO"),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Accepted by NGO'});
+                  await http.post(
+                    Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'donationId': donationId,
+                      'status': 'Accepted by NGO',
+                    }),
+                  );
                 },
               ),
               ListTile(
                 title: const Text("Assigned to Volunteer"),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Assigned to Volunteer'});
+                  await http.post(
+                    Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'donationId': donationId,
+                      'status': 'Assigned to Volunteer',
+                    }),
+                  );
                 },
               ),
               ListTile(
                 title: const Text("Picked Up"),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Picked Up'});
+                  await http.post(
+                    Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'donationId': donationId,
+                      'status': 'Picked Up',
+                    }),
+                  );
                 },
               ),
               ListTile(
                 title: const Text("Delivered"),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Delivered'});
+                  await http.post(
+                    Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'donationId': donationId,
+                      'status': 'Delivered',
+                    }),
+                  );
                 },
               ),
               ListTile(
                 title: const Text("Completed"),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseFirestore.instance.collection('donations').doc(donationId).update({'status': 'Completed'});
+                  await http.post(
+                    Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'donationId': donationId,
+                      'status': 'Completed',
+                    }),
+                  );
                 },
               ),
             ],
@@ -1840,12 +1890,17 @@ class _VolunteerManagementPanel extends StatelessWidget {
                         subtitle: Text("Donor: ${data['donorName'] ?? "Anonymous"}"),
                         trailing: const Icon(Icons.add, color: Colors.green),
                         onTap: () async {
-                          await FirebaseFirestore.instance.collection('donations').doc(did).update({
-                            'status': 'Assigned to Volunteer',
-                            'volunteerId': vid,
-                            'volunteerName': vName,
-                            'assignedAt': FieldValue.serverTimestamp(),
-                          });
+                          await http.post(
+                            Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+                            headers: {'Content-Type': 'application/json'},
+                            body: jsonEncode({
+                              'donationId': did,
+                              'status': 'Assigned to Volunteer',
+                              'volunteerId': vid,
+                              'volunteerName': vName,
+                              'assignedAt': 'serverTimestamp',
+                            }),
+                          );
                           await FirebaseFirestore.instance.collection('volunteer_assignments').add({
                             'donationId': did,
                             'volunteerId': vid,

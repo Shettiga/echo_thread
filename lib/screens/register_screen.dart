@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/services/app_localizations.dart';
+import 'package:echo_thread/config.dart';
 import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -94,25 +95,20 @@ class _RegisterScreenState extends State<RegisterScreen>
     });
 
     try {
-      // 1. Generate 6-digit OTP code
-      final random = math.Random();
-      final otp = (100000 + random.nextInt(900000)).toString();
+      // Send OTP to user email via Express backend API
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendUrl}/api/send-email-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': regEmail,
+          'name': regName,
+          'purpose': 'register',
+        }),
+      ).timeout(const Duration(seconds: 10));
 
-      // 2. Save OTP and 5m expiration timestamp in Firestore
-      final expiresAt = DateTime.now().add(const Duration(minutes: 5));
-      await FirebaseFirestore.instance.collection('registration_otps').doc(regEmail).set({
-        'email': regEmail,
-        'otp': otp,
-        'expiresAt': Timestamp.fromDate(expiresAt),
-      });
-
-      // 3. Send OTP to user email
-      await NotificationService.sendEmail(
-        email: regEmail,
-        name: regName,
-        activity: "Registration Verification (OTP Code: $otp)",
-        dateTime: DateTime.now(),
-      );
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to send verification code.');
+      }
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();

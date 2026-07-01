@@ -1,6 +1,9 @@
 import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:echo_thread/config.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/screens/otp_verification_screen.dart';
 import 'package:echo_thread/services/theme_service.dart';
@@ -60,26 +63,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final userData = userQuery.docs.first.data();
       final name = userData['name'] ?? 'User';
 
-      // 2. Generate 6-digit OTP
-      final random = Random();
-      final otp = (100000 + random.nextInt(900000)).toString();
+      // Send OTP to user email via Express backend API
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendUrl}/api/send-email-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': emailText,
+          'name': name,
+          'purpose': 'forgotPassword',
+        }),
+      ).timeout(const Duration(seconds: 10));
 
-      // 3. Save OTP in Firestore
-      final expiresAt = DateTime.now().add(const Duration(minutes: 5));
-      await FirebaseFirestore.instance.collection('password_resets').doc(emailText).set({
-        'email': emailText,
-        'otp': otp,
-        'createdAt': FieldValue.serverTimestamp(),
-        'expiresAt': Timestamp.fromDate(expiresAt),
-      });
-
-      // 4. Send Email Notification
-      await NotificationService.sendEmail(
-        email: emailText,
-        name: name,
-        activity: "Forgot Password (OTP Code: $otp)",
-        dateTime: DateTime.now(),
-      );
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to send verification code.');
+      }
 
       // 5. Success and Navigate
       if (mounted) {

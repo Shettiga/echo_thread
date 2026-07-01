@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'volunteer_map_screen.dart';
+import 'package:echo_thread/config.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/services/theme_service.dart';
 
@@ -76,14 +79,20 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
     final user = FirebaseAuth.instance.currentUser;
     final String uid = user?.uid ?? 'unknown';
     try {
-      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: $donationId");
-      await FirebaseFirestore.instance
-          .collection('donations')
-          .doc(donationId)
-          .update({
-        'status': nextStatus,
-      }).timeout(const Duration(seconds: 10));
-      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: $donationId, Response: Task status updated to $nextStatus successfully");
+      debugPrint("[EXPRESS_API_POST_START] UID: $uid, Endpoint: /api/update-donation, DocID: $donationId");
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'donationId': donationId,
+          'status': nextStatus,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to update task status.');
+      }
+      debugPrint("[EXPRESS_API_POST_SUCCESS] UID: $uid, Endpoint: /api/update-donation, DocID: $donationId, Response: Task status updated to $nextStatus successfully");
 
       if (!mounted) return;
       String toastMsg = "";

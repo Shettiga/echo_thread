@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:echo_thread/config.dart';
 import 'package:echo_thread/services/theme_service.dart';
 
 class VolunteerMapScreen extends StatefulWidget {
@@ -263,15 +266,21 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
     final String uid = user?.uid ?? 'unknown';
 
     try {
-      debugPrint("[FIRESTORE_WRITE_START] UID: $uid, Collection: donations, DocID: ${widget.donationId}");
-      await FirebaseFirestore.instance
-          .collection('donations')
-          .doc(widget.donationId)
-          .update({
-        'status': 'Delivered',
-        'deliveredAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 10));
-      debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: ${widget.donationId}, Response: Donation delivered successfully");
+      debugPrint("[EXPRESS_API_POST_START] UID: $uid, Endpoint: /api/update-donation, DocID: ${widget.donationId}");
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendUrl}/api/update-donation'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'donationId': widget.donationId,
+          'status': 'Delivered',
+          'deliveredAt': 'serverTimestamp',
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to mark task as delivered.');
+      }
+      debugPrint("[EXPRESS_API_POST_SUCCESS] UID: $uid, Endpoint: /api/update-donation, DocID: ${widget.donationId}, Response: Donation delivered successfully");
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
