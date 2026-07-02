@@ -28,11 +28,15 @@ exports.sendEmailOtp = async (req, res, next) => {
     // 2. Store OTP in Firestore
     await storeOTP(collectionName, email, 'email', email, otp);
 
-    // 3. Send Email OTP
+    // 3. Send Email OTP (non-blocking)
     if (purpose === 'forgotPassword') {
-      await sendPasswordResetEmail({ email, name: userName, otp });
+      sendPasswordResetEmail({ email, name: userName, otp }).catch(err => {
+        console.error('[sendEmailOtp Error - forgotPassword]', err);
+      });
     } else {
-      await sendOtpEmail({ email, name: userName, otp, purpose });
+      sendOtpEmail({ email, name: userName, otp, purpose }).catch(err => {
+        console.error('[sendEmailOtp Error - OTP]', err);
+      });
     }
 
     res.status(200).json({
@@ -101,9 +105,11 @@ exports.sendSmsOtp = async (req, res, next) => {
     // 2. Store OTP in Firestore
     await storeOTP('phone_otps', phone, 'phone', phone, otp);
 
-    // 3. Send SMS
+    // 3. Send SMS (non-blocking)
     const message = `Your EchoThread OTP code is: ${otp}. It is valid for 5 minutes.`;
-    await sendTwilioSMS(phone, message);
+    sendTwilioSMS(phone, message).catch(smsErr => {
+      console.error('[sendSMSOTP Error]', smsErr);
+    });
 
     // Support both standard and Callable formats
     res.status(200).json({
