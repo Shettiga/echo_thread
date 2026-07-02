@@ -56,27 +56,23 @@ exports.createDonation = async (req, res, next) => {
       const phone = donorData.phone;
 
       if (email) {
-        try {
-          await sendDonationCreatedEmail({
-            email,
-            name,
-            clothes: donationData.clothes,
-            quantity: donationData.quantity,
-            location: donationData.location,
-            pickupDate: donationData.pickupDate
-          });
-        } catch (emailErr) {
+        sendDonationCreatedEmail({
+          email,
+          name,
+          clothes: donationData.clothes,
+          quantity: donationData.quantity,
+          location: donationData.location,
+          pickupDate: donationData.pickupDate
+        }).catch(emailErr => {
           console.error('[Donation Created Email Error]', emailErr);
-        }
+        });
       }
 
       if (phone) {
-        try {
-          const smsMsg = `Hi ${name}, your donation of ${donationData.clothes} (Qty: ${donationData.quantity}) has been created successfully. We'll update you when a volunteer accepts it.`;
-          await sendTwilioSMS(phone, smsMsg);
-        } catch (smsErr) {
+        const smsMsg = `Hi ${name}, your donation of ${donationData.clothes} (Qty: ${donationData.quantity}) has been created successfully. We'll update you when a volunteer accepts it.`;
+        sendTwilioSMS(phone, smsMsg).catch(smsErr => {
           console.error('[Donation Created SMS Error]', smsErr);
-        }
+        });
       }
     }
 
@@ -157,46 +153,41 @@ exports.updateDonation = async (req, res, next) => {
 
           // Send email to donor
           if (donorEmail) {
-            try {
-              await sendDonationAcceptedEmail({
-                email: donorEmail,
-                name: donorName,
-                clothes,
-                quantity: qty,
-                location: address,
-                volunteerName,
-                volunteerPhone
-              });
-            } catch (emailErr) {
+            sendDonationAcceptedEmail({
+              email: donorEmail,
+              name: donorName,
+              clothes,
+              quantity: qty,
+              location: address,
+              volunteerName,
+              volunteerPhone
+            }).catch(emailErr => {
               console.error('[Donation Accepted Email Error]', emailErr);
-            }
+            });
           }
 
           // Send SMS to donor
           if (donorPhone) {
-            try {
-              await sendTwilioSMS(
-                donorPhone,
-                `Hi ${donorName}, volunteer ${volunteerName} has accepted your donation of ${clothes}. They will arrive shortly at: ${address}.`
-              );
-            } catch (smsErr) {
+            sendTwilioSMS(
+              donorPhone,
+              `Hi ${donorName}, volunteer ${volunteerName} has accepted your donation of ${clothes}. They will arrive shortly at: ${address}.`
+            ).catch(smsErr => {
               console.error('[Donation Accepted Donor SMS Error]', smsErr);
-            }
+            });
           }
 
           // Send SMS to volunteer
           if (volunteerId) {
-            const volSnap = await db.collection('users').doc(volunteerId).get();
-            if (volSnap.exists && volSnap.data().phone) {
-              try {
-                await sendTwilioSMS(
+            db.collection('users').doc(volunteerId).get().then(volSnap => {
+              if (volSnap.exists && volSnap.data().phone) {
+                sendTwilioSMS(
                   volSnap.data().phone,
                   `Hi ${volunteerName}, you have accepted the pickup for ${donorName}'s donation of ${clothes} at: ${address}.`
-                );
-              } catch (smsErr) {
-                console.error('[Donation Accepted Volunteer SMS Error]', smsErr);
+                ).catch(smsErr => {
+                  console.error('[Donation Accepted Volunteer SMS Error]', smsErr);
+                });
               }
-            }
+            }).catch(err => console.error('[Fetch Volunteer Error]', err));
           }
         }
 
@@ -204,28 +195,24 @@ exports.updateDonation = async (req, res, next) => {
         if (newStatus === 'Delivered' || newStatus === 'Completed') {
           // Send email to donor
           if (donorEmail) {
-            try {
-              await sendDonationDeliveredEmail({
-                email: donorEmail,
-                name: donorName,
-                clothes,
-                quantity: qty
-              });
-            } catch (emailErr) {
+            sendDonationDeliveredEmail({
+              email: donorEmail,
+              name: donorName,
+              clothes,
+              quantity: qty
+            }).catch(emailErr => {
               console.error('[Donation Delivered Email Error]', emailErr);
-            }
+            });
           }
 
           // Send SMS to donor
           if (donorPhone) {
-            try {
-              await sendTwilioSMS(
-                donorPhone,
-                `Hi ${donorName}, thank you! Your donation of ${clothes} has been successfully completed and delivered.`
-              );
-            } catch (smsErr) {
+            sendTwilioSMS(
+              donorPhone,
+              `Hi ${donorName}, thank you! Your donation of ${clothes} has been successfully completed and delivered.`
+            ).catch(smsErr => {
               console.error('[Donation Delivered Donor SMS Error]', smsErr);
-            }
+            });
           }
         }
       }

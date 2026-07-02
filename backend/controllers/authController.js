@@ -36,20 +36,16 @@ exports.register = async (req, res, next) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // 3. Send notifications asynchronously
-    try {
-      await sendWelcomeEmail({ email, name, role });
-    } catch (emailErr) {
+    // 3. Send notifications asynchronously (non-blocking)
+    sendWelcomeEmail({ email, name, role }).catch(emailErr => {
       console.error('[Welcome Email Error]', emailErr);
-    }
+    });
 
     if (phone) {
-      try {
-        const smsMsg = `Welcome ${name} to EchoThread! Your account has been successfully created. Thank you for joining!`;
-        await sendTwilioSMS(phone, smsMsg);
-      } catch (smsErr) {
+      const smsMsg = `Welcome ${name} to EchoThread! Your account has been successfully created. Thank you for joining!`;
+      sendTwilioSMS(phone, smsMsg).catch(smsErr => {
         console.error('[Welcome SMS Error]', smsErr);
-      }
+      });
     }
 
     res.status(200).json({
