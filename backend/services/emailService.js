@@ -35,8 +35,8 @@ async function sendHTMLEmail({ toEmail, subject, title, userName, detailsHtml, c
 
   const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: 587,
-  secure: false,
+  port: port,
+  secure: port === 465, // Use true for SSL (port 465), false for other ports (like 587 or 2525)
   requireTLS: true,
   auth: {
     user: process.env.SMTP_USER,
