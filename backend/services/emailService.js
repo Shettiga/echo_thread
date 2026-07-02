@@ -24,6 +24,8 @@ async function sendHTMLEmail({ toEmail, subject, title, userName, detailsHtml, c
     return;
   }
 
+  try {
+
   console.log("===== SMTP CONFIG =====");
   console.log("HOST:", process.env.SMTP_HOST);
   console.log("PORT:", process.env.SMTP_PORT);
