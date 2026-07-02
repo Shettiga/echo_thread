@@ -24,22 +24,34 @@ async function sendHTMLEmail({ toEmail, subject, title, userName, detailsHtml, c
     return;
   }
 
+  console.log("===== SMTP CONFIG =====");
+  console.log("HOST:", process.env.SMTP_HOST);
+  console.log("PORT:", process.env.SMTP_PORT);
+  console.log("USER:", process.env.SMTP_USER);
+  console.log("FROM:", process.env.SMTP_FROM);
+  console.log("=======================");
+
   try {
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: Number(process.env.SMTP_PORT) === 465,
-      auth: {
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false,   // Port 587 uses STARTTLS
+    auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
+    },
+    requireTLS: true,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    tls: {
+        minVersion: "TLSv1.2"
+    }
+});
+
+// Verify SMTP connection
+await transporter.verify();
+console.log("✅ SMTP connection verified.");
 
     const htmlContent = `
     <!DOCTYPE html>
