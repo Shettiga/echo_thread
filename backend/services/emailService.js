@@ -31,22 +31,15 @@ async function sendHTMLEmail({ toEmail, subject, title, userName, detailsHtml, c
   console.log("FROM:", process.env.SMTP_FROM);
   console.log("=======================");
 
-  try {
-    const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: false,   // Port 587 uses STARTTLS
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-    requireTLS: true,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    tls: {
-        minVersion: "TLSv1.2"
-    }
+  const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: 587,
+  secure: false,
+  requireTLS: true,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
 });
 
 // Verify SMTP connection
