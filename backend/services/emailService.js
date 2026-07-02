@@ -1,10 +1,51 @@
 const nodemailer = require('nodemailer');
 const { db, admin } = require('../config/firebase');
 
+// Initialize SMTP transporter lazily
+let transporter = null;
+
+function getTransporter() {
+  if (transporter) return transporter;
+
+  const host = process.env.SMTP_HOST;
+  const port = parseInt(process.env.SMTP_PORT || '587');
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  console.log("===== INITIALIZING SMTP TRANSPORTER =====");
+  console.log("HOST:", host);
+  console.log("PORT:", port);
+  console.log("USER:", user);
+  console.log("=========================================");
+
+  transporter = nodemailer.createTransport({
+    host: host,
+    port: port,
+    secure: port === 465,
+    requireTLS: true,
+    pool: true, // Enable connection pooling
+    maxConnections: 5,
+    maxMessages: 100,
+    auth: {
+      user: user,
+      pass: pass,
+    },
+  });
+
+  // Verify connection asynchronously so it doesn't block the request path
+  transporter.verify((err, success) => {
+    if (err) {
+      console.error("❌ SMTP connection verification failed:", err);
+    } else {
+      console.log("✅ SMTP connection verified and ready.");
+    }
+  });
+
+  return transporter;
+}
+
 // Reusable core SMTP sender
 async function sendHTMLEmail({ toEmail, subject, title, userName, detailsHtml, contactInfo }) {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '587');
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = process.env.SMTP_FROM || 'noreply@echothread.org';
@@ -25,28 +66,7 @@ async function sendHTMLEmail({ toEmail, subject, title, userName, detailsHtml, c
   }
 
   try {
-
-  console.log("===== SMTP CONFIG =====");
-  console.log("HOST:", process.env.SMTP_HOST);
-  console.log("PORT:", process.env.SMTP_PORT);
-  console.log("USER:", process.env.SMTP_USER);
-  console.log("FROM:", process.env.SMTP_FROM);
-  console.log("=======================");
-
-  const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: port,
-  secure: port === 465, // Use true for SSL (port 465), false for other ports (like 587 or 2525)
-  requireTLS: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-// Verify SMTP connection
-await transporter.verify();
-console.log("✅ SMTP connection verified.");
+    const currentTransporter = getTransporter();
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -91,7 +111,7 @@ console.log("✅ SMTP connection verified.");
 
     const formattedFrom = from.includes('<') ? from : `"EchoThread Platform" <${from}>`;
 
-    await transporter.sendMail({
+    await currentTransporter.sendMail({
       from: formattedFrom,
       to: toEmail,
       subject: subject,
