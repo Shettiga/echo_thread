@@ -89,8 +89,10 @@ console.log("✅ SMTP connection verified.");
     </html>
     `;
 
+    const formattedFrom = from.includes('<') ? from : `"EchoThread Platform" <${from}>`;
+
     await transporter.sendMail({
-      from: `"EchoThread Platform" <${from}>`,
+      from: formattedFrom,
       to: toEmail,
       subject: subject,
       html: htmlContent,
