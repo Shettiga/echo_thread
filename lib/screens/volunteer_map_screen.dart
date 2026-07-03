@@ -194,7 +194,7 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
         ],
         color: const Color(0xFF1565C0),
         strokeWidth: 6,
-        isDotted: true,
+        pattern: const StrokePattern.dotted(),
       ),
     );
   }
