@@ -245,20 +245,43 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
   Future<void> _launchNavigation() async {
     if (_currentPosition == null || _donorLatLng == null) return;
 
-    final url = 'https://www.google.com/maps/dir/?api=1&origin=${_currentPosition!.latitude},${_currentPosition!.longitude}&destination=${_donorLatLng!.latitude},${_donorLatLng!.longitude}&travelmode=driving';
-    final uri = Uri.parse(url);
+    final googleMapsAppUrl = 'google.navigation:q=${_donorLatLng!.latitude},${_donorLatLng!.longitude}&mode=d';
+    final googleMapsAppUri = Uri.parse(googleMapsAppUrl);
+
+    final fallbackUrl = 'https://www.google.com/maps/dir/?api=1&origin=${_currentPosition!.latitude},${_currentPosition!.longitude}&destination=${_donorLatLng!.latitude},${_donorLatLng!.longitude}&travelmode=driving';
+    final fallbackUri = Uri.parse(fallbackUrl);
 
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch $url';
+      // Try launching Google Maps application directly
+      bool launched = await launchUrl(googleMapsAppUri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        // Fallback to web link
+        bool launchedFallback = await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+        if (!launchedFallback && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not launch direct navigation or web fallback.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open external Google Maps: $e')),
-        );
+      // Fallback if direct app launch throws exception
+      try {
+        bool launchedFallback = await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+        if (!launchedFallback && mounted) {
+          throw 'Web fallback failed to launch.';
+        }
+      } catch (fallbackError) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not launch navigation: $fallbackError'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
