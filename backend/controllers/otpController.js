@@ -67,7 +67,8 @@ exports.verifyEmailOtp = async (req, res, next) => {
       collectionName = 'password_resets';
     }
 
-    await verifyOTP(collectionName, email, otp);
+    const shouldDelete = purpose !== 'forgotPassword';
+    await verifyOTP(collectionName, email, otp, shouldDelete);
 
     res.status(200).json({
       success: true,

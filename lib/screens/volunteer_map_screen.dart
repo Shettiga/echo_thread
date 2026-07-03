@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -27,7 +28,7 @@ class VolunteerMapScreen extends StatefulWidget {
 }
 
 class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
-  final Completer<GoogleMapController> _mapController = Completer<GoogleMapController>();
+  final MapController _mapController = MapController();
   Position? _currentPosition;
   StreamSubscription<Position>? _positionStreamSubscription;
 
@@ -50,6 +51,7 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -186,15 +188,13 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
     _polylines.clear();
     _polylines.add(
       Polyline(
-        polylineId: const PolylineId('route_path'),
         points: [
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           _donorLatLng!,
         ],
         color: const Color(0xFF1565C0),
-        width: 6,
-        geodesic: true,
-        patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+        strokeWidth: 6,
+        isDotted: true,
       ),
     );
   }
@@ -208,34 +208,37 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
       // Volunteer Marker
       _markers.add(
         Marker(
-          markerId: const MarkerId('volunteer_loc'),
-          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          infoWindow: const InfoWindow(title: 'You (Volunteer)'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          width: 40,
+          height: 40,
+          alignment: Alignment.bottomCenter,
+          child: const Tooltip(
+            message: 'You (Volunteer)',
+            child: Icon(Icons.location_pin, color: Colors.blue, size: 40),
+          ),
         ),
       );
 
       // Donor Marker
       _markers.add(
         Marker(
-          markerId: const MarkerId('donor_loc'),
-          position: _donorLatLng!,
-          infoWindow: InfoWindow(title: widget.donorName, snippet: widget.donorAddress),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          point: _donorLatLng!,
+          width: 40,
+          height: 40,
+          alignment: Alignment.bottomCenter,
+          child: Tooltip(
+            message: '${widget.donorName}\n${widget.donorAddress}',
+            child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+          ),
         ),
       );
     });
   }
 
   Future<void> _animateCameraToPosition(Position pos) async {
-    final GoogleMapController controller = await _mapController.future;
-    controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: LatLng(pos.latitude, pos.longitude),
-          zoom: 14.5,
-        ),
-      ),
+    _mapController.move(
+      LatLng(pos.latitude, pos.longitude),
+      14.5,
     );
   }
 
@@ -333,21 +336,26 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
       ),
       body: Stack(
         children: [
-          // 🗺️ Google Maps Widget
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-              zoom: 14.0,
+          // 🗺️ OpenStreetMap Widget using flutter_map
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+              initialZoom: 14.0,
+              onMapReady: _fitBounds,
             ),
-            markers: _markers,
-            polylines: _polylines,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            onMapCreated: (GoogleMapController controller) {
-              _mapController.complete(controller);
-              // Center view to fit both markers
-              _fitBounds(controller);
-            },
+            children: [
+              TileLayer(
+                urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                userAgentPackageName: "com.echothread.app",
+              ),
+              PolylineLayer(
+                polylines: _polylines.toList(),
+              ),
+              MarkerLayer(
+                markers: _markers.toList(),
+              ),
+            ],
           ),
 
           // ℹ️ Route Detail Overlay Card
@@ -465,27 +473,19 @@ class _VolunteerMapScreenState extends State<VolunteerMapScreen> {
     );
   }
 
-  Future<void> _fitBounds(GoogleMapController controller) async {
+  void _fitBounds() {
     if (_currentPosition == null || _donorLatLng == null) return;
 
-    double volunteerLat = _currentPosition!.latitude;
-    double volunteerLng = _currentPosition!.longitude;
-    double donorLat = _donorLatLng!.latitude;
-    double donorLng = _donorLatLng!.longitude;
+    final bounds = LatLngBounds(
+      LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+      _donorLatLng!,
+    );
 
-    LatLngBounds bounds;
-    if (volunteerLat < donorLat) {
-      bounds = LatLngBounds(
-        southwest: LatLng(volunteerLat, volunteerLng < donorLng ? volunteerLng : donorLng),
-        northeast: LatLng(donorLat, volunteerLng > donorLng ? volunteerLng : donorLng),
-      );
-    } else {
-      bounds = LatLngBounds(
-        southwest: LatLng(donorLat, volunteerLng < donorLng ? volunteerLng : donorLng),
-        northeast: LatLng(volunteerLat, volunteerLng > donorLng ? volunteerLng : donorLng),
-      );
-    }
-
-    controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(80.0),
+      ),
+    );
   }
 }

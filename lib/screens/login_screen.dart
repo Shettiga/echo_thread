@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
-import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -13,8 +11,6 @@ import 'ngo_dashboard.dart';
 import 'volunteer_dashboard.dart';
 import 'admin_dashboard.dart';
 import 'forgot_password_screen.dart';
-import 'otp_verification_screen.dart';
-import 'package:echo_thread/config.dart';
 import 'package:echo_thread/services/app_localizations.dart';
 import 'package:echo_thread/services/notification_service.dart';
 import 'package:echo_thread/services/theme_service.dart';
@@ -137,55 +133,17 @@ class _LoginScreenState extends State<LoginScreen>
       final data = userData.data();
       final role = data?['role'];
       final uName = data?['name'] ?? 'User';
-      final phone = data?['phone'] ?? '';
-
-      if (phone.toString().isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Warning: Profile has no phone number associated. Logging in directly.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        _navigateToDashboard(role);
-        return;
-      }
-
-      // Send OTP to user email via Express backend API
-      final response = await http.post(
-        Uri.parse('${AppConfig.backendUrl}/api/send-email-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': emailText,
-          'name': uName,
-          'purpose': 'login',
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode != 200) {
-        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to send verification code.');
-      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Verification code sent to your email! Please verify to complete login.'),
-          backgroundColor: Colors.blue,
+        SnackBar(
+          content: Text('Welcome back, $uName! Logged in successfully.'),
+          backgroundColor: Colors.green,
         ),
       );
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OtpVerificationScreen(
-            email: emailText,
-            phone: phone,
-            userName: uName,
-            purpose: OtpPurpose.login,
-          ),
-        ),
-      );
+      _navigateToDashboard(role);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       _shakeController.forward(from: 0.0);

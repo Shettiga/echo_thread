@@ -4,10 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
-import 'profile_screen.dart';
 import 'package:echo_thread/config.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/services/theme_service.dart';
+import 'package:echo_thread/widgets/profile_image_dialog.dart';
 
 class NGODashboard extends StatefulWidget {
   const NGODashboard({super.key});
@@ -457,12 +457,16 @@ class _NGODashboardState extends State<NGODashboard>
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                        onTap: () {
+                          showProfileImageDialog(
+                            context: context,
+                            imageUrl: profileImage,
+                            userName: userName,
+                            userRole: userRole,
+                            fallbackIcon: Icons.home_work_outlined,
+                            themeColor: Colors.orange,
+                            onProfileUpdated: getUserName,
                           );
-                          getUserName(); // Refresh details when returning from profile
                         },
                         child: CircleAvatar(
                           backgroundColor: Colors.white,

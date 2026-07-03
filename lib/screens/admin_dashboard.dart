@@ -10,6 +10,7 @@ import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/screens/login_screen.dart';
 import 'settings_screen.dart';
 import 'about_screen.dart';
+import 'package:echo_thread/widgets/profile_image_dialog.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -191,15 +192,28 @@ class _AdminDashboardState extends State<AdminDashboard>
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  backgroundImage: _adminPhoto != null && _adminPhoto!.isNotEmpty
-                      ? NetworkImage(_adminPhoto!)
-                      : null,
-                  child: _adminPhoto == null || _adminPhoto!.isEmpty
-                      ? const Icon(Icons.shield, color: Colors.white, size: 26)
-                      : null,
+                GestureDetector(
+                  onTap: () {
+                    showProfileImageDialog(
+                      context: context,
+                      imageUrl: _adminPhoto,
+                      userName: _adminName,
+                      userRole: "Administrator",
+                      fallbackIcon: Icons.shield,
+                      themeColor: themeColor,
+                      onProfileUpdated: _loadAdminProfile,
+                    );
+                  },
+                  child: CircleAvatar(
+                    radius: 26,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundImage: _adminPhoto != null && _adminPhoto!.isNotEmpty
+                        ? NetworkImage(_adminPhoto!)
+                        : null,
+                    child: _adminPhoto == null || _adminPhoto!.isEmpty
+                        ? const Icon(Icons.shield, color: Colors.white, size: 26)
+                        : null,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

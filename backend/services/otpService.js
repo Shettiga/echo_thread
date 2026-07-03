@@ -23,7 +23,7 @@ async function storeOTP(collectionName, docId, dataField, identifierValue, otp) 
 /**
  * Verifies an OTP code and deletes the document on success.
  */
-async function verifyOTP(collectionName, docId, enteredOtp) {
+async function verifyOTP(collectionName, docId, enteredOtp, deleteOnSuccess = true) {
   const docRef = db.collection(collectionName).doc(docId);
   const doc = await docRef.get();
 
@@ -43,8 +43,10 @@ async function verifyOTP(collectionName, docId, enteredOtp) {
     throw new Error('The verification code entered is incorrect.');
   }
 
-  // OTP is correct and not expired. Delete the document to prevent replay.
-  await docRef.delete();
+  // OTP is correct and not expired. Delete the document if requested.
+  if (deleteOnSuccess) {
+    await docRef.delete();
+  }
   return true;
 }
 

@@ -86,7 +86,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             errorMessage = responseData['result']?['error'] ?? 'Function returned an error status.';
           }
         } else {
-          errorMessage = 'HTTP ${response.statusCode}';
+          try {
+            final responseData = jsonDecode(response.body);
+            errorMessage = responseData['error'] ?? 'HTTP ${response.statusCode}';
+          } catch (_) {
+            errorMessage = 'HTTP ${response.statusCode}';
+          }
         }
       } catch (e) {
         errorMessage = e.toString();

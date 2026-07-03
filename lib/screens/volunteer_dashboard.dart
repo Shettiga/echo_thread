@@ -4,11 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
-import 'profile_screen.dart';
 import 'volunteer_map_screen.dart';
 import 'package:echo_thread/config.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/services/theme_service.dart';
+import 'package:echo_thread/widgets/profile_image_dialog.dart';
 
 class VolunteerDashboard extends StatefulWidget {
   const VolunteerDashboard({super.key});
@@ -172,12 +172,16 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      onTap: () {
+                        showProfileImageDialog(
+                          context: context,
+                          imageUrl: profileImage,
+                          userName: userName,
+                          userRole: userRole,
+                          fallbackIcon: Icons.volunteer_activism_outlined,
+                          themeColor: Colors.blue,
+                          onProfileUpdated: getUserName,
                         );
-                        getUserName(); // Refresh details when returning from profile
                       },
                       child: CircleAvatar(
                         backgroundColor: Colors.white,

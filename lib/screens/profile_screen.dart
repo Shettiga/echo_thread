@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:echo_thread/services/cloudinary_service.dart';
 import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/screens/login_screen.dart';
+import 'package:echo_thread/widgets/profile_image_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -338,22 +339,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             shape: BoxShape.circle,
                             border: Border.all(color: themeColor, width: 3),
                           ),
-                          child: CircleAvatar(
-                            radius: 50,
-                            backgroundColor: themeColor.withOpacity(0.1),
-                            backgroundImage: _selectedProfileImage != null
-                                ? FileImage(_selectedProfileImage!)
-                                : (profileImageUrl != null && profileImageUrl!.isNotEmpty
-                                    ? NetworkImage(profileImageUrl!) as ImageProvider
-                                    : null),
-                            child: _selectedProfileImage == null &&
-                                    (profileImageUrl == null || profileImageUrl!.isEmpty)
-                                ? Icon(
-                                    _getRoleIcon(role),
-                                    size: 50,
-                                    color: themeColor,
-                                  )
-                                : null,
+                          child: GestureDetector(
+                            onTap: () {
+                              if (_isEditing) {
+                                _showImageSourceActionSheet(context);
+                              } else {
+                                showProfileImageDialog(
+                                  context: context,
+                                  imageUrl: profileImageUrl,
+                                  userName: name,
+                                  userRole: role,
+                                  fallbackIcon: _getRoleIcon(role),
+                                  themeColor: themeColor,
+                                  showEditButton: false,
+                                );
+                              }
+                            },
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundColor: themeColor.withOpacity(0.1),
+                              backgroundImage: _selectedProfileImage != null
+                                  ? FileImage(_selectedProfileImage!)
+                                  : (profileImageUrl != null && profileImageUrl!.isNotEmpty
+                                      ? NetworkImage(profileImageUrl!) as ImageProvider
+                                      : null),
+                              child: _selectedProfileImage == null &&
+                                      (profileImageUrl == null || profileImageUrl!.isEmpty)
+                                  ? Icon(
+                                      _getRoleIcon(role),
+                                      size: 50,
+                                      color: themeColor,
+                                    )
+                                  : null,
+                            ),
                           ),
                         ),
                         if (_isEditing)
