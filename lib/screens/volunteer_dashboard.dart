@@ -18,7 +18,7 @@ class VolunteerDashboard extends StatefulWidget {
 }
 
 class _VolunteerDashboardState extends State<VolunteerDashboard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String userName = "Loading...";
   String userEmail = "";
