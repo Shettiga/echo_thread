@@ -11,6 +11,7 @@ import 'package:echo_thread/screens/login_screen.dart';
 import 'settings_screen.dart';
 import 'about_screen.dart';
 import 'package:echo_thread/widgets/profile_image_dialog.dart';
+import 'package:echo_thread/services/app_localizations.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});

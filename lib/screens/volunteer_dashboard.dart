@@ -7,8 +7,8 @@ import 'login_screen.dart';
 import 'volunteer_map_screen.dart';
 import 'package:echo_thread/config.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
-import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/widgets/profile_image_dialog.dart';
+import 'package:echo_thread/services/app_localizations.dart';
 
 class VolunteerDashboard extends StatefulWidget {
   const VolunteerDashboard({super.key});
@@ -462,7 +462,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
-                        label: Text(context.translate('track_route') ?? "Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                        label: Text(context.translate('track_route'), style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
@@ -493,7 +493,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
-                        label: Text(context.translate('track_route') ?? "Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                        label: Text(context.translate('track_route'), style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(

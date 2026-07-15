@@ -8,6 +8,7 @@ import 'package:echo_thread/config.dart';
 import 'package:echo_thread/widgets/navigation_drawer.dart';
 import 'package:echo_thread/services/theme_service.dart';
 import 'package:echo_thread/widgets/profile_image_dialog.dart';
+import 'package:echo_thread/services/app_localizations.dart';
 
 class NGODashboard extends StatefulWidget {
   const NGODashboard({super.key});

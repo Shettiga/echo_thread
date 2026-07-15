@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:echo_thread/screens/profile_screen.dart';
 import 'package:echo_thread/screens/login_screen.dart';
 import 'package:echo_thread/services/theme_service.dart';
@@ -142,8 +141,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListenableBuilder(
       listenable: Listenable.merge([themeService, languageService]),
       builder: (context, child) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-
         return Scaffold(
           appBar: AppBar(
             title: Text(context.translate('settings')),
