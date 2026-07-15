@@ -1,6 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
+import 'donor_dashboard.dart';
+import 'ngo_dashboard.dart';
+import 'volunteer_dashboard.dart';
+import 'admin_dashboard.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -96,15 +102,57 @@ class _SplashScreenState extends State<SplashScreen>
       curve: const Interval(0.68, 1.0, curve: Curves.easeOut),
     );
 
-    Timer(const Duration(seconds: 4), () {
+    Timer(const Duration(seconds: 4), () async {
       if (!mounted) return;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          if (doc.exists && doc.data() != null) {
+            final role = doc.data()?['role'];
+            if (mounted) {
+              _navigateToDashboard(role);
+              return;
+            }
+          }
+        } catch (e) {
+          debugPrint('[SPLASH] Persistent login verification error: $e');
+        }
+      }
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const LoginScreen(),
+          ),
+        );
+      }
+    });
+  }
+
+  void _navigateToDashboard(String? role) {
+    final String roleLower = (role ?? '').toString().toLowerCase();
+    if (roleLower == 'admin') {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => const LoginScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const AdminDashboard()),
       );
-    });
+    } else if (roleLower == 'donor') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DonorDashboard()),
+      );
+    } else if (roleLower == 'ngo') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const NGODashboard()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const VolunteerDashboard()),
+      );
+    }
   }
 
   @override

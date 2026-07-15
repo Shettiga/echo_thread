@@ -26,6 +26,8 @@ class _AdminDashboardState extends State<AdminDashboard>
   String _adminName = "Admin";
   String _adminEmail = "";
   String? _adminPhoto;
+  String? _selectedUserRoleFilter;
+  String? _selectedDonationStatusFilter;
 
   @override
   void initState() {
@@ -59,15 +61,29 @@ class _AdminDashboardState extends State<AdminDashboard>
 
   @override
   Widget build(BuildContext context) {
-    final themeService = ThemeService();
-    final isDark = themeService.isDark(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeColor = const Color(0xFF673AB7); // Admin Purple Theme Color
 
     final List<Widget> panels = [
-      _OverviewPanel(themeColor: themeColor),
-      _UserManagementPanel(themeColor: themeColor),
+      _OverviewPanel(
+        themeColor: themeColor,
+        onTapCard: (index, {userRole, donationStatus}) {
+          setState(() {
+            _currentTabIndex = index;
+            _selectedUserRoleFilter = userRole;
+            _selectedDonationStatusFilter = donationStatus;
+          });
+        },
+      ),
+      _UserManagementPanel(
+        themeColor: themeColor,
+        initialRoleFilter: _selectedUserRoleFilter,
+      ),
       _NgoManagementPanel(themeColor: themeColor),
-      _DonationManagementPanel(themeColor: themeColor),
+      _DonationManagementPanel(
+        themeColor: themeColor,
+        initialStatusFilter: _selectedDonationStatusFilter,
+      ),
       _VolunteerManagementPanel(themeColor: themeColor),
       _FeedbackPanel(themeColor: themeColor),
       _SupportPanel(themeColor: themeColor),
@@ -352,11 +368,16 @@ class _AdminDashboardState extends State<AdminDashboard>
 // ----------------------------------------------------
 class _OverviewPanel extends StatelessWidget {
   final Color themeColor;
-  const _OverviewPanel({required this.themeColor});
+  final Function(int index, {String? userRole, String? donationStatus}) onTapCard;
+
+  const _OverviewPanel({
+    required this.themeColor,
+    required this.onTapCard,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ThemeService().isDark(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return StreamBuilder<QuerySnapshot>(
@@ -424,86 +445,95 @@ class _OverviewPanel extends StatelessWidget {
                         childAspectRatio: 1.4,
                         children: [
                           _buildKpiCard(context, "Total Accounts", totalUsers.toString(),
-                              Icons.people, Colors.blue),
+                              Icons.people, Colors.blue, () => onTapCard(1)),
                           _buildKpiCard(context, "NGOs Registered", totalNGOs.toString(),
-                              Icons.home_work, Colors.orange),
+                              Icons.home_work, Colors.orange, () => onTapCard(2)),
                           _buildKpiCard(context, "Active Volunteers", totalVolunteers.toString(),
-                              Icons.directions_run, Colors.indigo),
+                              Icons.directions_run, Colors.indigo, () => onTapCard(4)),
                           _buildKpiCard(context, "Donors Database", totalDonors.toString(),
-                              Icons.volunteer_activism, Colors.teal),
+                              Icons.volunteer_activism, Colors.teal, () => onTapCard(1, userRole: "Donor")),
                           _buildKpiCard(context, "Total Pipeline", totalDonations.toString(),
-                              Icons.all_inbox, Colors.purple),
+                              Icons.all_inbox, Colors.purple, () => onTapCard(3)),
                           _buildKpiCard(context, "Pending Actions", pendingDonations.toString(),
-                              Icons.pending_actions, Colors.amber),
+                              Icons.pending_actions, Colors.amber, () => onTapCard(3, donationStatus: "Pending")),
                           _buildKpiCard(context, "Completed Handshakes", completedDonations.toString(),
-                              Icons.task_alt, Colors.green),
+                              Icons.task_alt, Colors.green, () => onTapCard(3, donationStatus: "Completed")),
                           _buildKpiCard(context, "Active Session (7d)", activeUsers.toString(),
-                              Icons.bolt, Colors.red),
+                              Icons.bolt, Colors.red, () => onTapCard(1)),
                         ],
                       );
                     },
                   ),
                   const SizedBox(height: 28),
 
-                  // Analytics Section with Charts & Progress Indicators
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 3,
+                  // Analytics Section with Charts & Progress Indicators (Responsive Layout)
+                  LayoutBuilder(
+                    builder: (context, chartsConstraints) {
+                      final bool isWide = chartsConstraints.maxWidth > 800;
+
+                      final userBreakdownCard = Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                          ),
+                        ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Custom User distribution bar chart
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    "User Distribution Breakdown",
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _buildUserBarChart(context, totalDonors, totalVolunteers, totalNGOs),
-                                ],
-                              ),
+                            const Text(
+                              "User Distribution Breakdown",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
+                            const SizedBox(height: 24),
+                            _buildUserBarChart(context, totalDonors, totalVolunteers, totalNGOs),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Pipeline Health Indicator",
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              const SizedBox(height: 24),
-                              _buildDonationCircularHealth(context, totalDonations, completedDonations, pendingDonations),
-                            ],
+                      );
+
+                      final healthIndicatorCard = Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
                           ),
                         ),
-                      ),
-                    ],
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Pipeline Health Indicator",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            const SizedBox(height: 24),
+                            _buildDonationCircularHealth(context, totalDonations, completedDonations, pendingDonations),
+                          ],
+                        ),
+                      );
+
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 3, child: userBreakdownCard),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 2, child: healthIndicatorCard),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            userBreakdownCard,
+                            const SizedBox(height: 16),
+                            healthIndicatorCard,
+                          ],
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
@@ -514,65 +544,64 @@ class _OverviewPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildKpiCard(BuildContext context, String title, String val, IconData icon, Color color) {
-    final isDark = ThemeService().isDark(context);
+  Widget _buildKpiCard(BuildContext context, String title, String val, IconData icon, Color color, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bg,
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: bg,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
+        side: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                ],
               ),
-              const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    val,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              )
             ],
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                val,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
-              ),
-            ],
-          )
-        ],
+        ),
       ),
     );
   }
@@ -718,7 +747,8 @@ class _OverviewPanel extends StatelessWidget {
 // ----------------------------------------------------
 class _UserManagementPanel extends StatefulWidget {
   final Color themeColor;
-  const _UserManagementPanel({required this.themeColor});
+  final String? initialRoleFilter;
+  const _UserManagementPanel({required this.themeColor, this.initialRoleFilter});
 
   @override
   State<_UserManagementPanel> createState() => _UserManagementPanelState();
@@ -726,7 +756,23 @@ class _UserManagementPanel extends StatefulWidget {
 
 class _UserManagementPanelState extends State<_UserManagementPanel> {
   String _searchQuery = "";
-  String _roleFilter = "All";
+  late String _roleFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _roleFilter = widget.initialRoleFilter ?? "All";
+  }
+
+  @override
+  void didUpdateWidget(_UserManagementPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialRoleFilter != oldWidget.initialRoleFilter) {
+      setState(() {
+        _roleFilter = widget.initialRoleFilter ?? "All";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1118,7 +1164,8 @@ class _NgoManagementPanel extends StatelessWidget {
 // ----------------------------------------------------
 class _DonationManagementPanel extends StatefulWidget {
   final Color themeColor;
-  const _DonationManagementPanel({required this.themeColor});
+  final String? initialStatusFilter;
+  const _DonationManagementPanel({required this.themeColor, this.initialStatusFilter});
 
   @override
   State<_DonationManagementPanel> createState() => _DonationManagementPanelState();
@@ -1126,9 +1173,25 @@ class _DonationManagementPanel extends StatefulWidget {
 
 class _DonationManagementPanelState extends State<_DonationManagementPanel> {
   String _searchQuery = "";
-  String _statusFilter = "All";
+  late String _statusFilter;
 
   final List<String> _statuses = ["All", "Pending", "Accepted", "Assigned", "Picked Up", "Completed"];
+
+  @override
+  void initState() {
+    super.initState();
+    _statusFilter = widget.initialStatusFilter ?? "All";
+  }
+
+  @override
+  void didUpdateWidget(_DonationManagementPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialStatusFilter != oldWidget.initialStatusFilter) {
+      setState(() {
+        _statusFilter = widget.initialStatusFilter ?? "All";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2381,7 +2444,7 @@ class _NotificationPanelState extends State<_NotificationPanel> {
 }
 
 // ----------------------------------------------------
-// SYSTEM REPORTS & EXPORT PANEL
+// SYSTEM REPORTS & EXPORT PANEL (LIVE ANALYTICS & EXPORTS)
 // ----------------------------------------------------
 class _ReportsPanel extends StatefulWidget {
   final Color themeColor;
@@ -2392,160 +2455,110 @@ class _ReportsPanel extends StatefulWidget {
 }
 
 class _ReportsPanelState extends State<_ReportsPanel> {
-  String _timeFilter = "Monthly";
+  String _timeFilter = "All Time";
+  String _statusFilter = "All Statuses";
+  String _searchQuery = "";
+  final _searchController = TextEditingController();
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = ThemeService().isDark(context);
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Operational System Reports", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              DropdownButton<String>(
-                value: _timeFilter,
-                underline: const SizedBox(),
-                items: const [
-                  DropdownMenuItem(value: "Daily", child: Text("Daily Report")),
-                  DropdownMenuItem(value: "Weekly", child: Text("Weekly Report")),
-                  DropdownMenuItem(value: "Monthly", child: Text("Monthly Report")),
-                  DropdownMenuItem(value: "Yearly", child: Text("Yearly Report")),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _timeFilter = val;
-                    });
-                  }
-                },
-              )
-            ],
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: MediaQuery.of(context).size.width > 800 ? 2 : 1,
-              mainAxisSpacing: 20,
-              crossAxisSpacing: 20,
-              childAspectRatio: 1.6,
-              children: [
-                _buildReportExportCard("User Account Demographics", "Active registration summaries categorized by roles.", Icons.people_outline, Colors.blue),
-                _buildReportExportCard("Donation Throughput", "Performance indicators on donation pick-up and drop-off timelines.", Icons.volunteer_activism_outlined, Colors.green),
-                _buildReportExportCard("NGO Capacity Analytics", "Detailed performance audits on NGO distributions.", Icons.home_work_outlined, Colors.orange),
-                _buildReportExportCard("Volunteer Deployment Logs", "Efficiency stats and pickup response times of volunteers.", Icons.directions_run_outlined, Colors.indigo),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  Widget _buildReportExportCard(String title, String desc, IconData icon, Color accentColor) {
-    final isDark = ThemeService().isDark(context);
-    final bg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: accentColor, size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ],
-          ),
-          Text(desc, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-                  onPressed: () => _triggerExport(title, "PDF"),
-                  icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 16),
-                  label: const Text("Export PDF", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700),
-                  onPressed: () => _triggerExport(title, "Excel"),
-                  icon: const Icon(Icons.table_view_outlined, color: Colors.white, size: 16),
-                  label: const Text("Export Excel", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          )
-        ],
-      ),
-    );
+  bool _matchesTimeFilter(DateTime? date) {
+    if (date == null) return true;
+    final now = DateTime.now();
+    switch (_timeFilter) {
+      case "Daily":
+        return now.difference(date).inDays < 1;
+      case "Weekly":
+        return now.difference(date).inDays < 7;
+      case "Monthly":
+        return now.difference(date).inDays < 30;
+      case "Yearly":
+        return now.difference(date).inDays < 365;
+      default:
+        return true;
+    }
   }
 
-  void _triggerExport(String reportName, String format) async {
-    // We will generate the actual formatted file string and save it to the local system path.
-    String contents = "";
-    String extension = "";
-    if (format == 'Excel') {
-      extension = ".csv";
-      contents = "Report,Format,Date,Timeframe\n$reportName,ExcelSpreadsheet,${DateTime.now().toIso8601String()},$_timeFilter\n";
+  void _triggerExport(List<QueryDocumentSnapshot> filteredDonations, String format) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final filename = "Report_${_timeFilter}_${_statusFilter.replaceAll(' ', '_')}_$timestamp";
+    
+    String fileContent = "";
+    String filePath = "d:/echo_thread/reports/";
+    String fullFileName = "";
+
+    if (format == "Excel") {
+      fullFileName = "$filename.csv";
+      // CSV Headers
+      fileContent = "Donation ID,Donor Name,Garments Type,Quantity,Location,NGO Hub,Volunteer Assigned,Status,Created At\n";
+      for (final doc in filteredDonations) {
+        final d = doc.data() as Map<String, dynamic>;
+        final String id = doc.id;
+        final String donor = d['donorName'] ?? "N/A";
+        final String clothes = (d['clothes'] ?? "N/A").toString().replaceAll(',', ';');
+        final String qty = (d['quantity'] ?? "0").toString();
+        final String loc = (d['location'] ?? "N/A").toString().replaceAll(',', ';');
+        final String ngo = (d['ngoName'] ?? "Unassigned").toString().replaceAll(',', ';');
+        final String volunteer = (d['volunteerName'] ?? "Unassigned").toString().replaceAll(',', ';');
+        final String status = d['status'] ?? "Pending";
+        String dateStr = "N/A";
+        if (d['createdAt'] != null) {
+          dateStr = (d['createdAt'] as Timestamp).toDate().toString();
+        }
+        fileContent += "$id,$donor,$clothes,$qty,$loc,$ngo,$volunteer,$status,$dateStr\n";
+      }
     } else {
-      extension = ".txt";
-      contents = "========================================\n"
-          "ECHO THREAD SYSTEM REPORT: $reportName\n"
-          "========================================\n"
-          "Generated at: ${DateTime.now()}\n"
+      fullFileName = "$filename.txt";
+      fileContent = "========================================================\n"
+          "                 ECHOTHREAD SYSTEM REPORT               \n"
+          "========================================================\n"
+          "Generated: ${DateTime.now()}\n"
           "Timeframe: $_timeFilter\n"
-          "----------------------------------------\n"
-          "System operations metrics: Normal status.\n";
+          "Status Filter: $_statusFilter\n"
+          "Total Records matching: ${filteredDonations.length}\n"
+          "--------------------------------------------------------\n\n";
+
+      for (final doc in filteredDonations) {
+        final d = doc.data() as Map<String, dynamic>;
+        fileContent += "ID: ${doc.id}\n"
+            "Donor Name: ${d['donorName'] ?? 'N/A'}\n"
+            "Garments: ${d['clothes'] ?? 'N/A'} (Qty: ${d['quantity'] ?? '0'})\n"
+            "Location: ${d['location'] ?? 'N/A'}\n"
+            "NGO Hub: ${d['ngoName'] ?? 'Unassigned'}\n"
+            "Volunteer: ${d['volunteerName'] ?? 'Unassigned'}\n"
+            "Status: ${d['status'] ?? 'Pending'}\n"
+            "--------------------------------------------------------\n";
+      }
     }
 
     try {
-      // Create path on device workspace
-      final directory = Directory("d:/echo_thread/reports");
+      final directory = Directory(filePath);
       if (!await directory.exists()) {
         await directory.create(recursive: true);
       }
-      final filename = "${reportName.replaceAll(' ', '_')}_$_timeFilter$extension";
-      final file = File("${directory.path}/$filename");
-      await file.writeAsString(contents);
+      final file = File("${directory.path}$fullFileName");
+      await file.writeAsString(fileContent);
 
       if (mounted) {
         showDialog(
           context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline, color: Colors.green),
-                  const SizedBox(width: 8),
-                  const Text("Report Exported!"),
-                ],
-              ),
-              content: Text("Successfully generated and saved report:\n\nName: $filename\nFormat: $format\nLocation: d:/echo_thread/reports/"),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK")),
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.green),
+                const SizedBox(width: 8),
+                const Text("Export Successful"),
               ],
-            );
-          },
+            ),
+            content: Text("Report exported successfully to:\n\nPath: $filePath$fullFileName\nFormat: $format"),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK")),
+            ],
+          ),
         );
       }
     } catch (e) {
@@ -2555,6 +2568,388 @@ class _ReportsPanelState extends State<_ReportsPanel> {
         );
       }
     }
+  }
+
+  void _triggerPrintMock(List<QueryDocumentSnapshot> filteredDonations) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.print, color: Colors.blue),
+            SizedBox(width: 8),
+            Text("Mock Print Spooler"),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          height: 400,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Print Preview Document", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      "EchoThread Spooled Print Job\n"
+                      "Timestamp: ${DateTime.now()}\n"
+                      "Filter Profile: $_timeFilter | $_statusFilter\n"
+                      "Total Pages: 1\n"
+                      "====================================\n\n" +
+                      filteredDonations.map((e) {
+                        final d = e.data() as Map<String, dynamic>;
+                        return "Donation ID: ${e.id}\n"
+                            "Donor: ${d['donorName'] ?? 'N/A'}\n"
+                            "Garment: ${d['clothes'] ?? 'N/A'} [Qty: ${d['quantity'] ?? '0'}]\n"
+                            "NGO: ${d['ngoName'] ?? 'Unassigned'}\n"
+                            "Status: ${d['status'] ?? 'Pending'}\n"
+                            "------------------------------------";
+                      }).join("\n"),
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Colors.black87),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Sent document to virtual printer spools successfully! 🖨️"), backgroundColor: Colors.green),
+              );
+            },
+            icon: const Icon(Icons.print, color: Colors.white),
+            label: const Text("Print", style: TextStyle(color: Colors.white)),
+          )
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('donations').snapshots(),
+      builder: (context, donationSnapshot) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('users').snapshots(),
+          builder: (context, userSnapshot) {
+            if (donationSnapshot.connectionState == ConnectionState.waiting ||
+                userSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: Colors.deepPurple));
+            }
+
+            final donations = donationSnapshot.data?.docs ?? [];
+            final users = userSnapshot.data?.docs ?? [];
+
+            // Dynamic count aggregation
+            final totalNGOs = users.where((u) => (u.data() as Map<String, dynamic>)['role'] == "NGO").length;
+            final totalVolunteers = users.where((u) => (u.data() as Map<String, dynamic>)['role'] == "Volunteer").length;
+            final totalDonors = users.where((u) => (u.data() as Map<String, dynamic>)['role'] == "Donor").length;
+
+            // Apply filters & search to donations list
+            final filteredDonations = donations.where((doc) {
+              final d = doc.data() as Map<String, dynamic>;
+              
+              // 1. Search Query
+              final String donorName = (d['donorName'] ?? "").toString().toLowerCase();
+              final String clothes = (d['clothes'] ?? "").toString().toLowerCase();
+              final String id = doc.id.toLowerCase();
+              final bool matchesSearch = donorName.contains(_searchQuery) ||
+                  clothes.contains(_searchQuery) ||
+                  id.contains(_searchQuery);
+
+              // 2. Status Filter
+              final String status = d['status'] ?? "Pending";
+              bool matchesStatus = true;
+              if (_statusFilter != "All Statuses") {
+                if (_statusFilter == "Pending Pickups") {
+                  matchesStatus = status == 'Pending' || status == 'Accepted by NGO' || status == 'Assigned to Volunteer';
+                } else if (_statusFilter == "Completed") {
+                  matchesStatus = status == 'Delivered' || status == 'Completed' || status == 'Distributed';
+                } else {
+                  matchesStatus = status == _statusFilter;
+                }
+              }
+
+              // 3. Time Filter
+              final DateTime? createdDate = (d['createdAt'] as Timestamp?)?.toDate();
+              final bool matchesTime = _matchesTimeFilter(createdDate);
+
+              return matchesSearch && matchesStatus && matchesTime;
+            }).toList();
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Operational System Reports Console",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Analytics card grids
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: MediaQuery.of(context).size.width > 800 ? 6 : 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.5,
+                    children: [
+                      _buildMiniStatCard("Total Donations", donations.length.toString(), Colors.blue, cardBg, textPrimary),
+                      _buildMiniStatCard("Filtered Match", filteredDonations.length.toString(), Colors.purple, cardBg, textPrimary),
+                      _buildMiniStatCard("Total NGOs", totalNGOs.toString(), Colors.orange, cardBg, textPrimary),
+                      _buildMiniStatCard("Volunteers Count", totalVolunteers.toString(), Colors.indigo, cardBg, textPrimary),
+                      _buildMiniStatCard("Donor Registry", totalDonors.toString(), Colors.teal, cardBg, textPrimary),
+                      _buildMiniStatCard("Completed Handshakes", donations.where((doc) {
+                        final s = (doc.data() as Map<String, dynamic>)['status'] ?? '';
+                        return s == 'Delivered' || s == 'Completed' || s == 'Distributed';
+                      }).length.toString(), Colors.green, cardBg, textPrimary),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Filter & Search Controls card
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  decoration: InputDecoration(
+                                    hintText: "Search by Donor, Garment type, or ID...",
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                                  ),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _searchQuery = val.trim().toLowerCase();
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => _triggerPrintMock(filteredDonations),
+                                icon: const Icon(Icons.print, color: Colors.white, size: 18),
+                                label: const Text("Print Mock", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _timeFilter,
+                                  decoration: InputDecoration(
+                                    labelText: "Timeframe",
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(value: "All Time", child: Text("All Time")),
+                                    DropdownMenuItem(value: "Daily", child: Text("Daily")),
+                                    DropdownMenuItem(value: "Weekly", child: Text("Weekly")),
+                                    DropdownMenuItem(value: "Monthly", child: Text("Monthly")),
+                                    DropdownMenuItem(value: "Yearly", child: Text("Yearly")),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        _timeFilter = val;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _statusFilter,
+                                  decoration: InputDecoration(
+                                    labelText: "Status",
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(value: "All Statuses", child: Text("All Statuses")),
+                                    DropdownMenuItem(value: "Pending", child: Text("Pending")),
+                                    DropdownMenuItem(value: "Pending Pickups", child: Text("Pending Pickups")),
+                                    DropdownMenuItem(value: "Completed", child: Text("Completed")),
+                                    DropdownMenuItem(value: "Accepted by NGO", child: Text("Accepted by NGO")),
+                                    DropdownMenuItem(value: "Assigned to Volunteer", child: Text("Assigned to Volunteer")),
+                                    DropdownMenuItem(value: "Picked Up", child: Text("Picked Up")),
+                                    DropdownMenuItem(value: "Delivered", child: Text("Delivered")),
+                                    DropdownMenuItem(value: "Distributed", child: Text("Distributed")),
+                                    DropdownMenuItem(value: "Rejected", child: Text("Rejected")),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        _statusFilter = val;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Export Options bar
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Filtered Records: ${filteredDonations.length}",
+                        style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary),
+                      ),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade700,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: filteredDonations.isEmpty ? null : () => _triggerExport(filteredDonations, "PDF"),
+                            icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 16),
+                            label: const Text("Export PDF", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade700,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: filteredDonations.isEmpty ? null : () => _triggerExport(filteredDonations, "Excel"),
+                            icon: const Icon(Icons.table_view_outlined, color: Colors.white, size: 16),
+                            label: const Text("Export Excel", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Data list matching search
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredDonations.length,
+                    itemBuilder: (context, index) {
+                      final doc = filteredDonations[index];
+                      final d = doc.data() as Map<String, dynamic>;
+                      final status = d['status'] ?? "Pending";
+                      final clothes = d['clothes'] ?? "Garments";
+                      final qty = d['quantity'] ?? "0";
+                      final donor = d['donorName'] ?? "Donor";
+                      final ngo = d['ngoName'] ?? "Unassigned NGO";
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text("$clothes (Qty: $qty)", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text("Donor: $donor | NGO Hub: $ngo\nID: ${doc.id}"),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: status == 'Delivered' || status == 'Completed' || status == 'Distributed'
+                                  ? Colors.green.shade50
+                                  : Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              status,
+                              style: TextStyle(
+                                color: status == 'Delivered' || status == 'Completed' || status == 'Distributed'
+                                    ? Colors.green.shade800
+                                    : Colors.orange.shade800,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMiniStatCard(String title, String val, Color color, Color bg, Color textPrimary) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(Icons.analytics_outlined, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            val,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
+          ),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 9.5, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
   }
 }
 

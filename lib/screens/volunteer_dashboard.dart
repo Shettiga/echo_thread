@@ -26,11 +26,13 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
   String? profileImage;
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     getUserName();
+    _tabController = TabController(length: 2, vsync: this);
 
     _animController = AnimationController(
       vsync: this,
@@ -43,6 +45,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
   @override
   void dispose() {
     _animController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -129,7 +132,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFF1565C0);
     final user = FirebaseAuth.instance.currentUser;
-    final isDark = ThemeService().isDark(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
     final textSecondary = isDark ? Colors.white70 : Colors.black54;
@@ -198,9 +201,9 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Volunteer Dashboard",
-                            style: TextStyle(
+                          Text(
+                            context.translate('dashboard'),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -209,7 +212,7 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            userRole,
+                            context.translate('role') + ": " + userRole,
                             style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -219,20 +222,20 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Icon(Icons.assignment_outlined, color: isDark ? Colors.white70 : Colors.black54),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Your Tasks",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
-                    ),
-                  ],
-                ),
+              // 🔹 TAB BAR FOR ACTIVE / COMPLETED TASKS
+              TabBar(
+                controller: _tabController,
+                labelColor: themeColor,
+                unselectedLabelColor: isDark ? Colors.white38 : Colors.black38,
+                indicatorColor: themeColor,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                tabs: [
+                  Tab(text: context.translate('active_actions')),
+                  Tab(text: context.translate('completed_tasks')),
+                ],
               ),
 
               const SizedBox(height: 10),
@@ -249,256 +252,42 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
                       debugPrint("[VOLUNTEER_DASHBOARD_STREAM_ERROR] Error: ${snapshot.error}");
                       return Center(child: Text("Error: ${snapshot.error}"));
                     }
-                    if (snapshot.hasData) {
-                      debugPrint("[VOLUNTEER_DASHBOARD_STREAM_DATA] Received docs count: ${snapshot.data!.docs.length}");
-                    }
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator(color: Colors.blue));
                     }
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.check_circle_outline, size: 64, color: Colors.grey.shade400),
-                            const SizedBox(height: 12),
-                            const Text(
-                              "All caught up! No assigned tasks.",
-                              style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
+                      return TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildEmptyListWidget(context.translate('active_actions')),
+                          _buildEmptyListWidget(context.translate('completed_tasks')),
+                        ],
                       );
                     }
 
-                    final tasks = snapshot.data!.docs.where((doc) {
-                      final status = (doc.data() as Map<String, dynamic>)['status'];
+                    final allDocs = snapshot.data!.docs;
+
+                    // Filter active tasks
+                    final activeTasks = allDocs.where((doc) {
+                      final status = (doc.data() as Map<String, dynamic>)['status'] ?? '';
                       return status == 'Assigned to Volunteer' ||
                           status == 'Assigned' ||
                           status == 'Accepted by Volunteer' ||
-                          status == 'Picked Up' ||
-                          status == 'Delivered';
+                          status == 'Picked Up';
                     }).toList();
 
-                    if (tasks.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.check_circle_outline, size: 64, color: Colors.grey.shade400),
-                            const SizedBox(height: 12),
-                            const Text(
-                              "All caught up! No active tasks.",
-                              style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                    // Filter completed/delivered tasks
+                    final completedTasks = allDocs.where((doc) {
+                      final status = (doc.data() as Map<String, dynamic>)['status'] ?? '';
+                      return status == 'Delivered' || status == 'Completed' || status == 'Distributed';
+                    }).toList();
 
-                    return ListView.builder(
-                      itemCount: tasks.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                      itemBuilder: (context, index) {
-                        final taskDoc = tasks[index];
-                        final taskId = taskDoc.id;
-                        final data = taskDoc.data() as Map<String, dynamic>;
-                        final String status = data['status'] ?? "Pending";
-                        final String clothes = data['clothes'] ?? "Clothes";
-                        final String qty = data['quantity']?.toString() ?? "1";
-                        final String donorId = data['donorId'] ?? "";
-                        final String donor = data['donorName'] ?? "Donor";
-                        final String address = data['location'] ?? "No address";
-                        final String pickupDate = data['pickupDate'] ?? "Soon";
-                        final String? photoUrl = data['imageUrl'];
-                        final String assignedDate = data['assignedAt'] != null
-                            ? (data['assignedAt'] as Timestamp).toDate().toString().substring(0, 10)
-                            : pickupDate;
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 14),
-                          elevation: 0,
-                          color: cardBg,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: Colors.blue.withOpacity(0.15), width: 1.2),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "$clothes (Qty: $qty)",
-                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
-                                    ),
-                                    _buildStatusPill(status),
-                                  ],
-                                ),
-                                const Divider(height: 24),
-
-                                // Fetch Donor phone/email in real time from users collection
-                                FutureBuilder<DocumentSnapshot>(
-                                  future: FirebaseFirestore.instance.collection('users').doc(donorId).get(),
-                                  builder: (context, userSnapshot) {
-                                    if (userSnapshot.connectionState == ConnectionState.waiting) {
-                                      return const Text("Loading donor details...", style: TextStyle(fontSize: 12, color: Colors.grey));
-                                    }
-                                    final uData = userSnapshot.data?.data() as Map<String, dynamic>?;
-                                    final String dPhone = uData?['phone'] ?? "No Phone";
-                                    final String dEmail = uData?['email'] ?? "No Email";
-
-                                    return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Donor Details: $donor",
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text("📞 Phone: $dPhone", style: TextStyle(fontSize: 12.5, color: textSecondary)),
-                                        Text("✉️ Email: $dEmail", style: TextStyle(fontSize: 12.5, color: textSecondary)),
-                                      ],
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  "Pickup Address: $address",
-                                  style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "Assigned Date: $assignedDate",
-                                  style: TextStyle(color: textSecondary, fontSize: 12.5),
-                                ),
-
-                                // Display Photo if available
-                                if (photoUrl != null && photoUrl.isNotEmpty) ...[
-                                  const SizedBox(height: 12),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Image.network(
-                                      photoUrl,
-                                      height: 140,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => Container(
-                                        height: 140,
-                                        color: Colors.grey.shade200,
-                                        alignment: Alignment.center,
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                                      ),
-                                      loadingBuilder: (context, child, progress) {
-                                        if (progress == null) return child;
-                                        return Container(
-                                          height: 140,
-                                          color: Colors.grey.shade100,
-                                          alignment: Alignment.center,
-                                          child: const CircularProgressIndicator(color: Colors.blue),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    if (status == 'Assigned to Volunteer' || status == 'Assigned')
-                                      ElevatedButton.icon(
-                                        onPressed: () => _updateTaskStatus(taskId, 'Accepted by Volunteer'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue.shade700,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        icon: const Icon(Icons.thumb_up_alt_outlined, color: Colors.white, size: 16),
-                                        label: const Text("Accept Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                      )
-                                    else if (status == 'Accepted by Volunteer') ...[
-                                      OutlinedButton.icon(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => VolunteerMapScreen(
-                                                donationId: taskId,
-                                                donorName: donor,
-                                                donorAddress: address,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          side: BorderSide(color: Colors.blue.shade700),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
-                                        label: Text("Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      ElevatedButton.icon(
-                                        onPressed: () => _updateTaskStatus(taskId, 'Picked Up'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.purple.shade700,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        icon: const Icon(Icons.airport_shuttle_outlined, color: Colors.white, size: 16),
-                                        label: const Text("Mark Pickup Completed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                      )
-                                    ] else if (status == 'Picked Up') ...[
-                                      OutlinedButton.icon(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => VolunteerMapScreen(
-                                                donationId: taskId,
-                                                donorName: donor,
-                                                donorAddress: address,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          side: BorderSide(color: Colors.blue.shade700),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
-                                        label: Text("Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      ElevatedButton.icon(
-                                        onPressed: () => _updateTaskStatus(taskId, 'Delivered'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green.shade700,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
-                                        label: const Text("Mark Delivered", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                      )
-                                    ] else
-                                      const Row(
-                                        children: [
-                                          Icon(Icons.check_circle, color: Colors.green),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            "Delivered to NGO hub",
-                                            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
-                                          ),
-                                        ],
-                                      )
-                                  ],
-                                )
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                    return TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildActiveTasksList(activeTasks, cardBg, textPrimary, textSecondary),
+                        _buildCompletedTasksList(completedTasks, cardBg, textPrimary, textSecondary),
+                      ],
                     );
                   },
                 ),
@@ -507,6 +296,313 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEmptyListWidget(String title) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_outline, size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
+          Text(
+            "No $title found.",
+            style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveTasksList(List<QueryDocumentSnapshot> tasks, Color cardBg, Color textPrimary, Color textSecondary) {
+    if (tasks.isEmpty) {
+      return _buildEmptyListWidget(context.translate('active_actions'));
+    }
+
+    return ListView.builder(
+      itemCount: tasks.length,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      itemBuilder: (context, index) {
+        final taskDoc = tasks[index];
+        final taskId = taskDoc.id;
+        final data = taskDoc.data() as Map<String, dynamic>;
+        final String status = data['status'] ?? "Pending";
+        final String clothes = data['clothes'] ?? "Clothes";
+        final String qty = data['quantity']?.toString() ?? "1";
+        final String donorId = data['donorId'] ?? "";
+        final String donor = data['donorName'] ?? "Donor";
+        final String address = data['location'] ?? "No address";
+        final String pickupDate = data['pickupDate'] ?? "Soon";
+        final String? photoUrl = data['imageUrl'];
+        final String assignedDate = data['assignedAt'] != null
+            ? (data['assignedAt'] as Timestamp).toDate().toString().substring(0, 10)
+            : pickupDate;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 14),
+          elevation: 0,
+          color: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.blue.withOpacity(0.15), width: 1.2),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "$clothes (Qty: $qty)",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                    ),
+                    _buildStatusPill(status),
+                  ],
+                ),
+                const Divider(height: 24),
+
+                // Fetch Donor details
+                FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance.collection('users').doc(donorId).get(),
+                  builder: (context, userSnapshot) {
+                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Text("Loading donor details...", style: TextStyle(fontSize: 12, color: Colors.grey));
+                    }
+                    final uData = userSnapshot.data?.data() as Map<String, dynamic>?;
+                    final String dPhone = uData?['phone'] ?? "No Phone";
+                    final String dEmail = uData?['email'] ?? "No Email";
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "${context.translate('donor_name')}: $donor",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
+                        ),
+                        const SizedBox(height: 4),
+                        Text("📞 ${context.translate('phone')}: $dPhone", style: TextStyle(fontSize: 12.5, color: textSecondary)),
+                        Text("✉️ ${context.translate('email')}: $dEmail", style: TextStyle(fontSize: 12.5, color: textSecondary)),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "${context.translate('pickup_address')}: $address",
+                  style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${context.translate('date')}: $assignedDate",
+                  style: TextStyle(color: textSecondary, fontSize: 12.5),
+                ),
+
+                // Display Photo if available
+                if (photoUrl != null && photoUrl.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      photoUrl,
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 140,
+                        color: Colors.grey.shade200,
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                      ),
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          height: 140,
+                          color: Colors.grey.shade100,
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(color: Colors.blue),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (status == 'Assigned to Volunteer' || status == 'Assigned')
+                      ElevatedButton.icon(
+                        onPressed: () => _updateTaskStatus(taskId, 'Accepted by Volunteer'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.thumb_up_alt_outlined, color: Colors.white, size: 16),
+                        label: Text(context.translate('accept_task'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      )
+                    else if (status == 'Accepted by Volunteer') ...[
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VolunteerMapScreen(
+                                donationId: taskId,
+                                donorName: donor,
+                                donorAddress: address,
+                              ),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.blue.shade700),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
+                        label: Text(context.translate('track_route') ?? "Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _updateTaskStatus(taskId, 'Picked Up'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.airport_shuttle_outlined, color: Colors.white, size: 16),
+                        label: Text(context.translate('mark_pickup'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      )
+                    ] else if (status == 'Picked Up') ...[
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VolunteerMapScreen(
+                                donationId: taskId,
+                                donorName: donor,
+                                donorAddress: address,
+                              ),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.blue.shade700),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: Icon(Icons.map_outlined, color: Colors.blue.shade700, size: 16),
+                        label: Text(context.translate('track_route') ?? "Track Route", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _updateTaskStatus(taskId, 'Delivered'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
+                        label: Text(context.translate('mark_delivered'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      )
+                    ]
+                  ],
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompletedTasksList(List<QueryDocumentSnapshot> tasks, Color cardBg, Color textPrimary, Color textSecondary) {
+    if (tasks.isEmpty) {
+      return _buildEmptyListWidget(context.translate('completed_tasks'));
+    }
+
+    return ListView.builder(
+      itemCount: tasks.length,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      itemBuilder: (context, index) {
+        final taskDoc = tasks[index];
+        final taskId = taskDoc.id;
+        final data = taskDoc.data() as Map<String, dynamic>;
+        final String status = data['status'] ?? "Completed";
+        final String clothes = data['clothes'] ?? "Clothes";
+        final String qty = data['quantity']?.toString() ?? "1";
+        final String donor = data['donorName'] ?? "Donor";
+        final String address = data['location'] ?? "No address";
+        final String pickupDate = data['pickupDate'] ?? "N/A";
+        final String ngo = data['ngoName'] ?? "Unassigned NGO";
+
+        String completionDate = "N/A";
+        if (data['completedAt'] != null) {
+          final date = (data['completedAt'] as Timestamp).toDate();
+          completionDate = "${date.day}/${date.month}/${date.year}";
+        } else if (data['deliveredAt'] != null) {
+          final date = (data['deliveredAt'] as Timestamp).toDate();
+          completionDate = "${date.day}/${date.month}/${date.year}";
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 14),
+          elevation: 0,
+          color: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.green.withOpacity(0.15), width: 1.2),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "$clothes (Qty: $qty)",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                    ),
+                    _buildStatusPill(status),
+                  ],
+                ),
+                const Divider(height: 24),
+                Text(
+                  "${context.translate('donation_id')}: $taskId",
+                  style: const TextStyle(color: Colors.grey, fontSize: 11.5, fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "${context.translate('donor_name')}: $donor",
+                  style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${context.translate('ngo')}: $ngo",
+                  style: TextStyle(color: textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${context.translate('pickup_address')}: $address",
+                  style: TextStyle(color: textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${context.translate('date')}: $pickupDate",
+                  style: TextStyle(color: textSecondary, fontSize: 12.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${context.translate('completion_date')}: $completionDate",
+                  style: TextStyle(color: Colors.green.shade800, fontSize: 12.5, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -529,6 +625,8 @@ class _VolunteerDashboardState extends State<VolunteerDashboard>
         text = Colors.purple.shade800;
         break;
       case "Delivered":
+      case "Completed":
+      case "Distributed":
         bg = Colors.green.shade50;
         text = Colors.green.shade800;
         break;

@@ -252,6 +252,32 @@ async function sendDonationDeliveredEmail({ email, name, clothes, quantity }) {
   });
 }
 
+async function sendVolunteerNotificationEmail({ email, volunteerName, donorName, pickupAddress, pickupDate, donorPhone, donationId }) {
+  const detailsHtml = `
+    <p>A new garment donation request is available for pickup. Here are the details:</p>
+    <table class="details-table">
+      <tr><td class="label">Donation ID</td><td class="value">${donationId}</td></tr>
+      <tr><td class="label">Donor Name</td><td class="value">${donorName}</td></tr>
+      <tr><td class="label">Pickup Address</td><td class="value">${pickupAddress}</td></tr>
+      <tr><td class="label">Pickup Date</td><td class="value">${pickupDate}</td></tr>
+      <tr><td class="label">Contact Details</td><td class="value">${donorPhone || 'N/A'}</td></tr>
+    </table>
+    <p>Please log in to the application to accept this task.</p>
+    <div style="text-align: center; margin: 20px 0;">
+      <a href="https://echothread.org/accept-task?id=${donationId}" style="display: inline-block; padding: 12px 24px; background-color: #2e7d32; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">Accept Task</a>
+    </div>
+  `;
+
+  await sendHTMLEmail({
+    toEmail: email,
+    subject: 'New Donation Pickup Task Available 🚗',
+    title: 'New Donation Request',
+    userName: volunteerName,
+    detailsHtml,
+    contactInfo: `Donor: ${donorName} | ID: ${donationId}`
+  });
+}
+
 module.exports = {
   sendHTMLEmail,
   sendWelcomeEmail,
@@ -259,5 +285,6 @@ module.exports = {
   sendOtpEmail,
   sendDonationCreatedEmail,
   sendDonationAcceptedEmail,
-  sendDonationDeliveredEmail
+  sendDonationDeliveredEmail,
+  sendVolunteerNotificationEmail
 };

@@ -2,9 +2,9 @@ const { db, admin } = require('../config/firebase');
 const {
   sendDonationCreatedEmail,
   sendDonationAcceptedEmail,
-  sendDonationDeliveredEmail
+  sendDonationDeliveredEmail,
+  sendVolunteerNotificationEmail
 } = require('../services/emailService');
-const { sendTwilioSMS } = require('../services/smsService');
 
 /**
  * Creates a new donation record in Firestore and sends notifications.
@@ -68,11 +68,27 @@ exports.createDonation = async (req, res, next) => {
         });
       }
 
-      if (phone) {
-        const smsMsg = `Hi ${name}, your donation of ${donationData.clothes} (Qty: ${donationData.quantity}) has been created successfully. We'll update you when a volunteer accepts it.`;
-        sendTwilioSMS(phone, smsMsg).catch(smsErr => {
-          console.error('[Donation Created SMS Error]', smsErr);
-        });
+      // 3. Notify all volunteers via email
+      try {
+        const volunteerSnaps = await db.collection('users').where('role', '==', 'Volunteer').get();
+        for (const volDoc of volunteerSnaps.docs) {
+          const volData = volDoc.data();
+          if (volData.email) {
+            sendVolunteerNotificationEmail({
+              email: volData.email,
+              volunteerName: volData.name || 'Volunteer',
+              donorName: name,
+              pickupAddress: donationData.location,
+              pickupDate: donationData.pickupDate,
+              donorPhone: phone || '',
+              donationId: docRef.id
+            }).catch(volEmailErr => {
+              console.error(`[Volunteer Notification Email Error] failed for ${volData.email}:`, volEmailErr);
+            });
+          }
+        }
+      } catch (errVol) {
+        console.error('[Volunteer Notification Query Error]', errVol);
       }
     }
 
@@ -113,8 +129,12 @@ exports.updateDonation = async (req, res, next) => {
     if (cleanedFields.assignedAt === 'serverTimestamp') {
       cleanedFields.assignedAt = admin.firestore.FieldValue.serverTimestamp();
     }
-    if (cleanedFields.deliveredAt === 'serverTimestamp') {
+    if (cleanedFields.deliveredAt === 'serverTimestamp' || cleanedFields.status === 'Delivered') {
       cleanedFields.deliveredAt = admin.firestore.FieldValue.serverTimestamp();
+      cleanedFields.completedAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+    if (cleanedFields.status === 'Completed' || cleanedFields.status === 'Distributed') {
+      cleanedFields.completedAt = admin.firestore.FieldValue.serverTimestamp();
     }
 
     // 1. Update document in Firestore
@@ -166,29 +186,6 @@ exports.updateDonation = async (req, res, next) => {
             });
           }
 
-          // Send SMS to donor
-          if (donorPhone) {
-            sendTwilioSMS(
-              donorPhone,
-              `Hi ${donorName}, volunteer ${volunteerName} has accepted your donation of ${clothes}. They will arrive shortly at: ${address}.`
-            ).catch(smsErr => {
-              console.error('[Donation Accepted Donor SMS Error]', smsErr);
-            });
-          }
-
-          // Send SMS to volunteer
-          if (volunteerId) {
-            db.collection('users').doc(volunteerId).get().then(volSnap => {
-              if (volSnap.exists && volSnap.data().phone) {
-                sendTwilioSMS(
-                  volSnap.data().phone,
-                  `Hi ${volunteerName}, you have accepted the pickup for ${donorName}'s donation of ${clothes} at: ${address}.`
-                ).catch(smsErr => {
-                  console.error('[Donation Accepted Volunteer SMS Error]', smsErr);
-                });
-              }
-            }).catch(err => console.error('[Fetch Volunteer Error]', err));
-          }
         }
 
         // B. Donation Delivered / Completed
@@ -205,15 +202,6 @@ exports.updateDonation = async (req, res, next) => {
             });
           }
 
-          // Send SMS to donor
-          if (donorPhone) {
-            sendTwilioSMS(
-              donorPhone,
-              `Hi ${donorName}, thank you! Your donation of ${clothes} has been successfully completed and delivered.`
-            ).catch(smsErr => {
-              console.error('[Donation Delivered Donor SMS Error]', smsErr);
-            });
-          }
         }
       }
     }

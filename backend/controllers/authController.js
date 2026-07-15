@@ -1,6 +1,5 @@
 const { auth, db, admin } = require('../config/firebase');
 const { sendWelcomeEmail } = require('../services/emailService');
-const { sendTwilioSMS } = require('../services/smsService');
 const { verifyOTP } = require('../services/otpService');
 
 /**
@@ -41,12 +40,6 @@ exports.register = async (req, res, next) => {
       console.error('[Welcome Email Error]', emailErr);
     });
 
-    if (phone) {
-      const smsMsg = `Welcome ${name} to EchoThread! Your account has been successfully created. Thank you for joining!`;
-      sendTwilioSMS(phone, smsMsg).catch(smsErr => {
-        console.error('[Welcome SMS Error]', smsErr);
-      });
-    }
 
     res.status(200).json({
       success: true,

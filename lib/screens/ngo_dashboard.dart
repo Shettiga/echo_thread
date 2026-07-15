@@ -79,6 +79,8 @@ class _NGODashboardState extends State<NGODashboard>
           .doc(donationId)
           .update({
         'status': 'Accepted by NGO',
+        'ngoId': uid,
+        'ngoName': userName,
         'acceptedAt': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 10));
       debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: donations, DocID: $donationId, Response: Donation accepted successfully");
@@ -227,6 +229,8 @@ class _NGODashboardState extends State<NGODashboard>
                                     'status': 'Assigned to Volunteer',
                                     'volunteerId': vId,
                                     'volunteerName': vName,
+                                    'ngoId': uid,
+                                    'ngoName': userName,
                                     'assignedAt': 'serverTimestamp',
                                   }),
                                 ).timeout(const Duration(seconds: 10));
@@ -437,20 +441,7 @@ class _NGODashboardState extends State<NGODashboard>
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.greenAccent),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              "Login Success Status: Active Session",
-                              style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
+                        const SizedBox(),
                       ],
                     ),
                   ),
@@ -584,7 +575,7 @@ class _NGODashboardState extends State<NGODashboard>
       );
     }
 
-    final isDark = ThemeService().isDark(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textPrimary = isDark ? Colors.white.withOpacity(0.9) : Colors.black87;
     final textSecondary = isDark ? Colors.white70 : Colors.black54;
@@ -628,40 +619,62 @@ class _NGODashboardState extends State<NGODashboard>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  "Donor: $donor",
+                  "${context.translate('donor_name')}: $donor",
                   style: TextStyle(color: textPrimary, fontWeight: FontWeight.w500, fontSize: 13.5),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Address: $location",
+                  "${context.translate('pickup_address')}: $location",
                   style: TextStyle(color: textSecondary, fontSize: 12.5),
                 ),
 
-                // Render Donation photo if available
+                // Render Donation photo if available (Interactive Zoom Dialog)
                 if (photoUrl != null && photoUrl.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      photoUrl,
-                      height: 140,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
+                  GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: InteractiveViewer(
+                              panEnabled: true,
+                              boundaryMargin: const EdgeInsets.all(20),
+                              minScale: 0.5,
+                              maxScale: 4,
+                              child: Image.network(photoUrl, fit: BoxFit.contain),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        photoUrl,
                         height: 140,
-                        color: Colors.grey.shade200,
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                      ),
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Container(
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
                           height: 140,
-                          color: Colors.grey.shade100,
+                          color: Colors.grey.shade200,
                           alignment: Alignment.center,
-                          child: const CircularProgressIndicator(color: Colors.orange),
-                        );
-                      },
+                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                        ),
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            height: 140,
+                            color: Colors.grey.shade100,
+                            alignment: Alignment.center,
+                            child: const CircularProgressIndicator(color: Colors.orange),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ],
@@ -673,7 +686,7 @@ class _NGODashboardState extends State<NGODashboard>
                       const Icon(Icons.directions_run_outlined, size: 16, color: Colors.orange),
                       const SizedBox(width: 4),
                       Text(
-                        "Volunteer: ${data['volunteerName']}",
+                        "${context.translate('volunteers')}: ${data['volunteerName']}",
                         style: TextStyle(color: textSecondary, fontSize: 12.5),
                       ),
                     ],
@@ -693,7 +706,7 @@ class _NGODashboardState extends State<NGODashboard>
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           ),
                           icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.redAccent),
-                          label: const Text("Reject", style: TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                          label: Text(context.translate('reject'), style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton.icon(
@@ -704,7 +717,7 @@ class _NGODashboardState extends State<NGODashboard>
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           ),
                           icon: const Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
-                          label: const Text("Accept", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                          label: Text(context.translate('accept'), style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ] else if (status == 'Accepted by NGO' || status == 'Accepted') ...[
                         ElevatedButton.icon(
@@ -715,7 +728,7 @@ class _NGODashboardState extends State<NGODashboard>
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           ),
                           icon: const Icon(Icons.assignment_ind_outlined, size: 16, color: Colors.white),
-                          label: const Text("Assign Volunteer", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                          label: Text(context.translate('assign_volunteer'), style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ] else if (status == 'Delivered') ...[
                         ElevatedButton.icon(
@@ -726,7 +739,7 @@ class _NGODashboardState extends State<NGODashboard>
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           ),
                           icon: const Icon(Icons.volunteer_activism_outlined, size: 16, color: Colors.white),
-                          label: const Text("Distribute to Needy", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                          label: Text(context.translate('distribute_to_needy'), style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ] else ...[
                         Text(
@@ -740,6 +753,66 @@ class _NGODashboardState extends State<NGODashboard>
                       ]
                     ],
                   )
+                ] else ...[
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(context.translate('delete_record')),
+                              content: Text(context.translate('delete_confirm')),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(context.translate('cancel')),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.pop(context);
+                                    try {
+                                      await FirebaseFirestore.instance
+                                          .collection('donations')
+                                          .doc(dId)
+                                          .delete();
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text("Record deleted successfully.")),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("Error deleting: $e"), backgroundColor: Colors.red),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  child: Text(
+                                    context.translate('delete'),
+                                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white),
+                        label: Text(
+                          context.translate('delete_record'),
+                          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
                 ]
               ],
             ),
