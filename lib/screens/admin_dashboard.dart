@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,6 +13,11 @@ import 'settings_screen.dart';
 import 'about_screen.dart';
 import 'package:echo_thread/widgets/profile_image_dialog.dart';
 import 'package:echo_thread/services/app_localizations.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:excel/excel.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -443,7 +449,7 @@ class _OverviewPanel extends StatelessWidget {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
-                        childAspectRatio: 1.4,
+                        childAspectRatio: boxConstraints.maxWidth > 800 ? 1.4 : 1.15,
                         children: [
                           _buildKpiCard(context, "Total Accounts", totalUsers.toString(),
                               Icons.people, Colors.blue, () => onTapCard(1)),
@@ -561,7 +567,7 @@ class _OverviewPanel extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1194,6 +1200,265 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
     }
   }
 
+  double _getPipelineProgress(String status) {
+    final lower = status.toLowerCase();
+    if (lower.contains('pending')) return 0.2;
+    if (lower.contains('accepted')) return 0.4;
+    if (lower.contains('assigned')) return 0.6;
+    if (lower.contains('picked')) return 0.8;
+    if (lower.contains('completed') || lower.contains('delivered') || lower.contains('distributed')) return 1.0;
+    return 0.1;
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: Colors.grey),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 85,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(BuildContext context, String label, IconData icon, Color color, VoidCallback onPressed) {
+    return Expanded(
+      child: TextButton(
+        style: TextButton.styleFrom(
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: onPressed,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDonationCard(
+    BuildContext context,
+    QueryDocumentSnapshot doc,
+    Color cardBg,
+    bool isDark,
+    Color themeColor,
+  ) {
+    final dData = doc.data() as Map<String, dynamic>;
+    final String dId = doc.id;
+    final String clothes = dData['clothes'] ?? "Clothes";
+    final int qty = int.tryParse(dData['quantity']?.toString() ?? '1') ?? 1;
+    final String donorName = dData['donorName'] ?? "Anonymous";
+    final String donorAddress = dData['donorAddress'] ?? "No Address";
+    final String ngoName = dData['ngoName'] ?? "Unassigned NGO";
+    final String volunteerName = dData['volunteerName'] ?? "Unassigned Volunteer";
+    final String status = dData['status'] ?? "Pending";
+    final Timestamp? created = dData['createdAt'] as Timestamp?;
+    final String dateStr = created != null
+        ? "${created.toDate().day}/${created.toDate().month}/${created.toDate().year}"
+        : "N/A";
+
+    return Card(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "$clothes (Qty: $qty)",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusBgColor(status),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: _getStatusTextColor(status),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildDetailRow("Donor:", donorName, Icons.person_outline),
+                _buildDetailRow("Address:", donorAddress, Icons.location_on_outlined),
+                _buildDetailRow("NGO Hub:", ngoName, Icons.home_work_outlined),
+                _buildDetailRow("Volunteer:", volunteerName, Icons.directions_run_outlined),
+                _buildDetailRow("Date:", dateStr, Icons.calendar_today_outlined),
+                const SizedBox(height: 12),
+                
+                // Pipeline Progress Bar
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Pipeline Stage",
+                          style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                        ),
+                        Text(
+                          "${(_getPipelineProgress(status) * 100).toInt()}%",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: status.toLowerCase().contains('completed') || status.toLowerCase().contains('delivered') || status.toLowerCase().contains('distributed')
+                                ? Colors.green
+                                : themeColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _getPipelineProgress(status),
+                        backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          status.toLowerCase().contains('completed') || status.toLowerCase().contains('delivered') || status.toLowerCase().contains('distributed')
+                              ? Colors.green
+                              : themeColor,
+                        ),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              children: [
+                _buildActionButton(context, "Details", Icons.info_outline, themeColor, () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Donation Details"),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Clothes Type: $clothes", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text("Quantity: $qty"),
+                          Text("Donor: $donorName"),
+                          Text("Donor Address: $donorAddress"),
+                          Text("NGO Hub: $ngoName"),
+                          Text("Volunteer Name: $volunteerName"),
+                          Text("Current Status: $status"),
+                          Text("Report Date: $dateStr"),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Close"),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                _buildActionButton(context, "Assign", Icons.person_add_alt_1_outlined, Colors.indigo, () {
+                  _showAssignVolunteerDialog(context, dId, clothes);
+                }),
+                _buildActionButton(context, "Status", Icons.edit_outlined, Colors.orange, () {
+                  _showEditStatusDialog(context, dId, status);
+                }),
+                _buildActionButton(context, "Delete", Icons.delete_outline, Colors.red, () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Delete Donation"),
+                      content: const Text("Are you sure you want to delete this donation from the system?"),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Cancel"),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await FirebaseFirestore.instance.collection('donations').doc(dId).delete();
+                          },
+                          child: const Text("Delete", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeService().isDark(context);
@@ -1298,169 +1563,40 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
                   return const Center(child: Text("No donations match the filter criteria."));
                 }
 
-                return ListView.builder(
-                  itemCount: filteredDocs.length,
-                  itemBuilder: (context, index) {
-                    final doc = filteredDocs[index];
-                    final dData = doc.data() as Map<String, dynamic>;
-                    final String dId = doc.id;
-                    final String clothes = dData['clothes'] ?? "Clothes";
-                    final int qty = int.tryParse(dData['quantity']?.toString() ?? '1') ?? 1;
-                    final String donorName = dData['donorName'] ?? "Anonymous";
-                    final String donorAddress = dData['donorAddress'] ?? "No Address";
-                    final String ngoName = dData['ngoName'] ?? "Unassigned NGO";
-                    final String volunteerName = dData['volunteerName'] ?? "Unassigned Volunteer";
-                    final String status = dData['status'] ?? "Pending";
-                    final Timestamp? created = dData['createdAt'] as Timestamp?;
-                    final String dateStr = created != null
-                        ? "${created.toDate().day}/${created.toDate().month}/${created.toDate().year}"
-                        : "N/A";
-
-                    return Card(
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                        ),
-                      ),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    "$clothes (Qty: $qty)",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusBgColor(status),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    status,
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: _getStatusTextColor(status),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text("Donor: $donorName", style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                            Text("Address: $donorAddress", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text("NGO Hub: $ngoName", style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                            Text("Volunteer: $volunteerName", style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                            const SizedBox(height: 4),
-                            Text("Date: $dateStr", style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                            const Divider(height: 24),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextButton.icon(
-                                    style: TextButton.styleFrom(foregroundColor: themeColor),
-                                    onPressed: () {
-                                      // View details dialog
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text("Donation Details"),
-                                          content: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text("Clothes Type: $clothes", style: const TextStyle(fontWeight: FontWeight.bold)),
-                                              Text("Quantity: $qty"),
-                                              Text("Donor: $donorName"),
-                                              Text("Donor Address: $donorAddress"),
-                                              Text("NGO Hub: $ngoName"),
-                                              Text("Volunteer Name: $volunteerName"),
-                                              Text("Current Status: $status"),
-                                              Text("Report Date: $dateStr"),
-                                            ],
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              child: const Text("Close"),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.info_outline, size: 16),
-                                    label: const Text("Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: TextButton.icon(
-                                    style: TextButton.styleFrom(foregroundColor: Colors.indigo),
-                                    onPressed: () {
-                                      _showAssignVolunteerDialog(context, dId, clothes);
-                                    },
-                                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
-                                    label: const Text("Assign", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: TextButton.icon(
-                                    style: TextButton.styleFrom(foregroundColor: Colors.orange),
-                                    onPressed: () {
-                                      _showEditStatusDialog(context, dId, status);
-                                    },
-                                    icon: const Icon(Icons.edit_outlined, size: 16),
-                                    label: const Text("Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: TextButton.icon(
-                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                    onPressed: () {
-                                      // Confirm delete
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text("Delete Donation"),
-                                          content: const Text("Are you sure you want to delete this donation from the system?"),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              child: const Text("Cancel"),
-                                            ),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                              onPressed: () async {
-                                                Navigator.pop(context);
-                                                await FirebaseFirestore.instance.collection('donations').doc(dId).delete();
-                                              },
-                                              child: const Text("Delete", style: TextStyle(color: Colors.white)),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.delete_outline, size: 16),
-                                    label: const Text("Delete", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
+                final isWide = MediaQuery.of(context).size.width > 800;
+                if (isWide) {
+                  return GridView.builder(
+                    itemCount: filteredDocs.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      mainAxisExtent: 310,
+                    ),
+                    itemBuilder: (context, index) {
+                      return _buildDonationCard(
+                        context,
+                        filteredDocs[index],
+                        cardBg,
+                        isDark,
+                        themeColor,
+                      );
+                    },
+                  );
+                } else {
+                  return ListView.builder(
+                    itemCount: filteredDocs.length,
+                    itemBuilder: (context, index) {
+                      return _buildDonationCard(
+                        context,
+                        filteredDocs[index],
+                        cardBg,
+                        isDark,
+                        themeColor,
+                      );
+                    },
+                  );
+                }
               },
             ),
           )
@@ -1648,7 +1784,7 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
     if (lower.contains('accepted')) return Colors.teal.withOpacity(0.1);
     if (lower.contains('assigned')) return Colors.indigo.withOpacity(0.1);
     if (lower.contains('picked')) return Colors.purple.withOpacity(0.1);
-    if (lower.contains('completed') || lower.contains('delivered')) return Colors.green.withOpacity(0.1);
+    if (lower.contains('completed') || lower.contains('delivered') || lower.contains('distributed')) return Colors.green.withOpacity(0.1);
     return Colors.grey.withOpacity(0.1);
   }
 
@@ -1658,7 +1794,7 @@ class _DonationManagementPanelState extends State<_DonationManagementPanel> {
     if (lower.contains('accepted')) return Colors.teal.shade800;
     if (lower.contains('assigned')) return Colors.indigo.shade800;
     if (lower.contains('picked')) return Colors.purple.shade800;
-    if (lower.contains('completed') || lower.contains('delivered')) return Colors.green.shade800;
+    if (lower.contains('completed') || lower.contains('delivered') || lower.contains('distributed')) return Colors.green.shade800;
     return Colors.grey.shade800;
   }
 }
@@ -2486,63 +2622,187 @@ class _ReportsPanelState extends State<_ReportsPanel> {
 
   void _triggerExport(List<QueryDocumentSnapshot> filteredDonations, String format) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final filename = "Report_${_timeFilter}_${_statusFilter.replaceAll(' ', '_')}_$timestamp";
-    
-    String fileContent = "";
-    String filePath = "d:/echo_thread/reports/";
+    final filename = "Report_${_timeFilter.replaceAll(' ', '_')}_${_statusFilter.replaceAll(' ', '_')}_$timestamp";
     String fullFileName = "";
 
-    if (format == "Excel") {
-      fullFileName = "$filename.csv";
-      // CSV Headers
-      fileContent = "Donation ID,Donor Name,Garments Type,Quantity,Location,NGO Hub,Volunteer Assigned,Status,Created At\n";
-      for (final doc in filteredDonations) {
-        final d = doc.data() as Map<String, dynamic>;
-        final String id = doc.id;
-        final String donor = d['donorName'] ?? "N/A";
-        final String clothes = (d['clothes'] ?? "N/A").toString().replaceAll(',', ';');
-        final String qty = (d['quantity'] ?? "0").toString();
-        final String loc = (d['location'] ?? "N/A").toString().replaceAll(',', ';');
-        final String ngo = (d['ngoName'] ?? "Unassigned").toString().replaceAll(',', ';');
-        final String volunteer = (d['volunteerName'] ?? "Unassigned").toString().replaceAll(',', ';');
-        final String status = d['status'] ?? "Pending";
-        String dateStr = "N/A";
-        if (d['createdAt'] != null) {
-          dateStr = (d['createdAt'] as Timestamp).toDate().toString();
-        }
-        fileContent += "$id,$donor,$clothes,$qty,$loc,$ngo,$volunteer,$status,$dateStr\n";
-      }
-    } else {
-      fullFileName = "$filename.txt";
-      fileContent = "========================================================\n"
-          "                 ECHOTHREAD SYSTEM REPORT               \n"
-          "========================================================\n"
-          "Generated: ${DateTime.now()}\n"
-          "Timeframe: $_timeFilter\n"
-          "Status Filter: $_statusFilter\n"
-          "Total Records matching: ${filteredDonations.length}\n"
-          "--------------------------------------------------------\n\n";
-
-      for (final doc in filteredDonations) {
-        final d = doc.data() as Map<String, dynamic>;
-        fileContent += "ID: ${doc.id}\n"
-            "Donor Name: ${d['donorName'] ?? 'N/A'}\n"
-            "Garments: ${d['clothes'] ?? 'N/A'} (Qty: ${d['quantity'] ?? '0'})\n"
-            "Location: ${d['location'] ?? 'N/A'}\n"
-            "NGO Hub: ${d['ngoName'] ?? 'Unassigned'}\n"
-            "Volunteer: ${d['volunteerName'] ?? 'Unassigned'}\n"
-            "Status: ${d['status'] ?? 'Pending'}\n"
-            "--------------------------------------------------------\n";
-      }
-    }
-
     try {
-      final directory = Directory(filePath);
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
+      // Get safe, platform-compliant application documents directory
+      final appDir = await getApplicationDocumentsDirectory();
+      final reportsDir = Directory("${appDir.path}/EchoThreadReports");
+      if (!await reportsDir.exists()) {
+        await reportsDir.create(recursive: true);
       }
-      final file = File("${directory.path}$fullFileName");
-      await file.writeAsString(fileContent);
+      final String filePath = "${reportsDir.path}/";
+
+      if (format == "Excel") {
+        fullFileName = "$filename.xlsx";
+        final excel = Excel.createExcel();
+        const sheetName = "Reports";
+        final sheet = excel[sheetName];
+        if (excel.tables.containsKey("Sheet1") && sheetName != "Sheet1") {
+          excel.delete("Sheet1");
+        }
+
+        // CSV/Excel Headers
+        final List<CellValue> headers = [
+          TextCellValue("Donation ID"),
+          TextCellValue("Donor Name"),
+          TextCellValue("Garments Type"),
+          TextCellValue("Quantity"),
+          TextCellValue("Location"),
+          TextCellValue("NGO Hub"),
+          TextCellValue("Volunteer Assigned"),
+          TextCellValue("Status"),
+          TextCellValue("Created At")
+        ];
+        sheet.appendRow(headers);
+
+        for (final doc in filteredDonations) {
+          final d = doc.data() as Map<String, dynamic>;
+          final String id = doc.id;
+          final String donor = d['donorName'] ?? "N/A";
+          final String clothes = d['clothes'] ?? "N/A";
+          final int qty = int.tryParse(d['quantity']?.toString() ?? '0') ?? 0;
+          final String loc = d['location'] ?? "N/A";
+          final String ngo = d['ngoName'] ?? "Unassigned";
+          final String volunteer = d['volunteerName'] ?? "Unassigned";
+          final String status = d['status'] ?? "Pending";
+          String dateStr = "N/A";
+          if (d['createdAt'] != null) {
+            dateStr = (d['createdAt'] as Timestamp).toDate().toString();
+          }
+          sheet.appendRow([
+            TextCellValue(id),
+            TextCellValue(donor),
+            TextCellValue(clothes),
+            IntCellValue(qty),
+            TextCellValue(loc),
+            TextCellValue(ngo),
+            TextCellValue(volunteer),
+            TextCellValue(status),
+            TextCellValue(dateStr)
+          ]);
+        }
+
+        final file = File("$filePath$fullFileName");
+        final bytes = excel.save();
+        if (bytes != null) {
+          await file.writeAsBytes(bytes);
+        } else {
+          throw Exception("Failed to encode Excel data.");
+        }
+      } else {
+        fullFileName = "$filename.pdf";
+        final pdf = pw.Document();
+
+        pdf.addPage(
+          pw.MultiPage(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            header: (pw.Context context) {
+              return pw.Column(
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        "EchoThread Donation System Report",
+                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.deepPurple900),
+                      ),
+                      pw.Text(
+                        DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()),
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Divider(thickness: 1, color: PdfColors.grey300),
+                  pw.SizedBox(height: 8),
+                ],
+              );
+            },
+            footer: (pw.Context context) {
+              return pw.Column(
+                children: [
+                  pw.Divider(thickness: 1, color: PdfColors.grey300),
+                  pw.SizedBox(height: 4),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text("EchoThread Admin Portal Reports Console", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                      pw.Text("Page ${context.pageNumber} of ${context.pagesCount}", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                    ],
+                  ),
+                ],
+              );
+            },
+            build: (pw.Context context) {
+              return [
+                pw.Text("Report Summary", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                pw.SizedBox(height: 6),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text("Timeframe: $_timeFilter", style: const pw.TextStyle(fontSize: 9)),
+                        pw.Text("Status Filter: $_statusFilter", style: const pw.TextStyle(fontSize: 9)),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text("Total Records: ${filteredDonations.length}", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 14),
+                pw.Table.fromTextArray(
+                  headers: [
+                    "ID",
+                    "Donor Name",
+                    "Garment Type",
+                    "Qty",
+                    "NGO Hub",
+                    "Volunteer Assigned",
+                    "Status",
+                    "Date"
+                  ],
+                  data: filteredDonations.map((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
+                    final String id = doc.id.length > 6 ? doc.id.substring(0, 6) : doc.id;
+                    final String donor = d['donorName'] ?? "N/A";
+                    final String clothes = d['clothes'] ?? "N/A";
+                    final String qty = (d['quantity'] ?? "0").toString();
+                    final String ngo = d['ngoName'] ?? "Unassigned";
+                    final String volunteer = d['volunteerName'] ?? "Unassigned";
+                    final String status = d['status'] ?? "Pending";
+                    String dateStr = "N/A";
+                    if (d['createdAt'] != null) {
+                      final date = (d['createdAt'] as Timestamp).toDate();
+                      dateStr = "${date.day}/${date.month}/${date.year}";
+                    }
+                    return [id, donor, clothes, qty, ngo, volunteer, status, dateStr];
+                  }).toList(),
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, color: PdfColors.white),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple800),
+                  cellStyle: const pw.TextStyle(fontSize: 7),
+                  alternateCellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.grey900),
+                  alternateRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                  border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                  cellAlignment: pw.Alignment.centerLeft,
+                  headerAlignment: pw.Alignment.centerLeft,
+                ),
+              ];
+            },
+          ),
+        );
+
+        final file = File("$filePath$fullFileName");
+        await file.writeAsBytes(await pdf.save());
+      }
 
       if (mounted) {
         showDialog(
@@ -2562,10 +2822,24 @@ class _ReportsPanelState extends State<_ReportsPanel> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint("[ADMIN_DASHBOARD] Export failed error: $e\n$stackTrace");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Export failed: $e"), backgroundColor: Colors.red),
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: const [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text("Export Failed"),
+              ],
+            ),
+            content: Text("An error occurred while generating the $format report:\n\n$e"),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK")),
+            ],
+          ),
         );
       }
     }
@@ -2778,6 +3052,7 @@ class _ReportsPanelState extends State<_ReportsPanel> {
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<String>(
+                                  isExpanded: true,
                                   value: _timeFilter,
                                   decoration: InputDecoration(
                                     labelText: "Timeframe",
@@ -2803,6 +3078,7 @@ class _ReportsPanelState extends State<_ReportsPanel> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
+                                  isExpanded: true,
                                   value: _statusFilter,
                                   decoration: InputDecoration(
                                     labelText: "Status",
@@ -2839,14 +3115,19 @@ class _ReportsPanelState extends State<_ReportsPanel> {
                   const SizedBox(height: 20),
 
                   // Export Options bar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
                       Text(
                         "Filtered Records: ${filteredDonations.length}",
                         style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary),
                       ),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
@@ -2857,7 +3138,6 @@ class _ReportsPanelState extends State<_ReportsPanel> {
                             icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 16),
                             label: const Text("Export PDF", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
-                          const SizedBox(width: 8),
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green.shade700,
