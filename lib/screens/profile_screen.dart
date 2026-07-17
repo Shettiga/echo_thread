@@ -60,7 +60,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .doc(uid)
           .get();
 
-      if (!userData.exists) return;
+      if (!userData.exists) {
+        // Create default profile if missing (e.g. for custom testing users)
+        final defaultProfile = {
+          'name': user.displayName ?? "User",
+          'email': user.email ?? "",
+          'phone': user.phoneNumber ?? "",
+          'role': 'Donor',
+          'profileImage': user.photoURL ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+        };
+        await FirebaseFirestore.instance
+            .collection("users")
+            .doc(uid)
+            .set(defaultProfile);
+
+        userData = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(uid)
+            .get();
+      }
 
       final uData = userData.data();
       final userRole = uData?['role'] ?? 'Donor';
@@ -233,12 +252,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .update({
+          .set({
         'name': newName,
         'email': newEmail,
         'phone': newPhone,
         'profileImage': newImageUrl,
-      }).timeout(const Duration(seconds: 10));
+      }, SetOptions(merge: true)).timeout(const Duration(seconds: 10));
       debugPrint("[FIRESTORE_WRITE_SUCCESS] UID: $uid, Collection: users, DocID: $uid, Response: User profile updated successfully");
 
       // Try updating in Auth

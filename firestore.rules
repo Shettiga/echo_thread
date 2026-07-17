@@ -8,14 +8,13 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function getUserRole() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data.get('role', '') : '';
     }
     
     function isAdmin() {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        (getUserData().role.lower() == 'admin');
+      return isSignedIn() && getUserRole().lower() == 'admin';
     }
     
     function isOwner(userId) {
@@ -24,7 +23,7 @@ service cloud.firestore {
 
     // 1. Users collection rules
     match /users/{userId} {
-      allow read, write: if isAdmin() || isOwner(userId);
+      allow read, write: if isOwner(userId) || isAdmin();
     }
 
     // 2. Donations collection rules
@@ -42,7 +41,7 @@ service cloud.firestore {
       );
       
       // NGOs can read and update donations
-      allow read, update: if isSignedIn() && getUserData().role.lower() == 'ngo';
+      allow read, update: if isSignedIn() && getUserRole().lower() == 'ngo';
     }
 
     // 3. Feedback collection rules
