@@ -17,7 +17,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -2789,7 +2789,7 @@ class _ReportsPanelState extends State<_ReportsPanel> {
                   headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, color: PdfColors.white),
                   headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple800),
                   cellStyle: const pw.TextStyle(fontSize: 7),
-                  alternateCellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.grey900),
+                  oddCellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.grey900),
                   alternateRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
                   border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
                   cellAlignment: pw.Alignment.centerLeft,
