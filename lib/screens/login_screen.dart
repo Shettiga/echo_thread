@@ -95,25 +95,7 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     try {
-      // 3. Check if account exists in Firestore
-      final userQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: emailText)
-          .limit(1)
-          .get();
-
-      if (userQuery.docs.isEmpty) {
-        _showErrorDialog(
-          "Account Not Found",
-          "Account not found. Please register first.",
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // 4. Attempt login
+      // 3. Attempt login
       final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailText,
         password: passwordText,
@@ -151,6 +133,8 @@ class _LoginScreenState extends State<LoginScreen>
       // Explicit Firebase credential error messaging
       if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
         _showErrorDialog("Invalid Password", "The password you entered is incorrect. Please try again.");
+      } else if (e.code == 'user-not-found') {
+        _showErrorDialog("Account Not Found", "Account not found. Please register first.");
       } else {
         _showErrorDialog("Authentication Error", e.message ?? "An unexpected authentication error occurred.");
       }

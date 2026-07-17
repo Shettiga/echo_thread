@@ -45,38 +45,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Verify user exists in Firestore
-      final userQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: emailText)
-          .limit(1)
-          .get();
-
-      if (userQuery.docs.isEmpty) {
-        _showErrorDialog(
-          "Account Not Found",
-          "Account not found. Please register first.",
-        );
-        return;
-      }
-
-      final userData = userQuery.docs.first.data();
-      final name = userData['name'] ?? 'User';
-
       // Send OTP to user email via Express backend API
       final response = await http.post(
         Uri.parse('${AppConfig.backendUrl}/api/send-email-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': emailText,
-          'name': name,
           'purpose': 'forgotPassword',
         }),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
-        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to send verification code.');
+        final errorMsg = jsonDecode(response.body)['error'] ?? 'Failed to send verification code.';
+        if (response.statusCode == 404) {
+          _showErrorDialog(
+            "Account Not Found",
+            "Account not found. Please register first.",
+          );
+        } else {
+          _showErrorDialog("Error", errorMsg);
+        }
+        return;
       }
+
+      final responseData = jsonDecode(response.body);
+      final name = responseData['name'] ?? 'User';
 
       // 5. Success and Navigate
       if (mounted) {

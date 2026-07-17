@@ -1,5 +1,6 @@
 const { generateOTP, storeOTP, verifyOTP } = require('../services/otpService');
 const { sendOtpEmail, sendPasswordResetEmail } = require('../services/emailService');
+const { db } = require('../config/firebase');
 
 /**
  * Generates an OTP, stores it in Firestore, and sends it to the user's email.
@@ -13,12 +14,25 @@ exports.sendEmailOtp = async (req, res, next) => {
       return res.status(400).json({ error: 'Email and purpose are required fields.' });
     }
 
-    const userName = name || 'User';
+    let userName = name || 'User';
     let collectionName = 'registration_otps';
     if (purpose === 'login') {
       collectionName = 'login_otps';
     } else if (purpose === 'forgotPassword') {
       collectionName = 'password_resets';
+      
+      // Check if user exists in Firestore
+      const userQuery = await db.collection('users')
+        .where('email', '==', email)
+        .limit(1)
+        .get();
+
+      if (userQuery.empty) {
+        return res.status(404).json({ error: 'Account not found. Please register first.' });
+      }
+
+      const userData = userQuery.docs[0].data();
+      userName = userData.name || userName;
     }
 
     // 1. Generate 6-digit OTP
@@ -40,7 +54,8 @@ exports.sendEmailOtp = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Verification code sent to your email.'
+      message: 'Verification code sent to your email.',
+      name: userName
     });
   } catch (err) {
     next(err);
