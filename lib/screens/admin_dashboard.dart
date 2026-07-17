@@ -2790,7 +2790,7 @@ class _ReportsPanelState extends State<_ReportsPanel> {
                   headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple800),
                   cellStyle: const pw.TextStyle(fontSize: 7),
                   oddCellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.grey900),
-                  alternateRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                  oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
                   border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
                   cellAlignment: pw.Alignment.centerLeft,
                   headerAlignment: pw.Alignment.centerLeft,
