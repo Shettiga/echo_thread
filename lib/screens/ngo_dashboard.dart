@@ -176,6 +176,18 @@ class _NGODashboardState extends State<NGODashboard>
                       .where('role', isEqualTo: 'Volunteer')
                       .snapshots(),
                   builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            "Error loading volunteers: ${snapshot.error}",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                          ),
+                        ),
+                      );
+                    }
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator(color: Colors.orange));
                     }

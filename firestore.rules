@@ -23,7 +23,8 @@ service cloud.firestore {
 
     // 1. Users collection rules
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     // 2. Donations collection rules
